@@ -243,4 +243,4 @@ def machine_learning_correction(df, n_splits=3, n_estimators=200):
         "rmse_improve_mean": rmse_improve_mean,
         "importance": importance,
         "test_results": test_results,
-    }    
+    }
