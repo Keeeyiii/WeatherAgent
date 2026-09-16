@@ -1,10 +1,10 @@
 """
-WeatherAgent —— AI气象预报智能分析与误差订正系统
+WeatherAgent â€”â€” AIæ°”è±¡é¢„æŠ¥æ™ºèƒ½åˆ†æžä¸Žè¯¯å·®è®¢æ­£ç³»ç»Ÿ
 
-入口文件：负责搭建 Streamlit 网页界面。
+å…¥å£æ–‡ä»¶ï¼šè´Ÿè´£æ­å»º Streamlit ç½‘é¡µç•Œé¢ã€‚
 
-本系统为科研实践/实验性原型，用于演示：
-气象数据质量检查 -> 预报误差评价 -> 机器学习误差订正 -> 订正效果检验 -> DeepSeek AI Agent
+æœ¬ç³»ç»Ÿä¸ºç§‘ç ”å®žè·µ/å®žéªŒæ€§åŽŸåž‹ï¼Œç”¨äºŽæ¼”ç¤ºï¼š
+æ°”è±¡æ•°æ®è´¨é‡æ£€æŸ¥ -> é¢„æŠ¥è¯¯å·®è¯„ä»· -> æœºå™¨å­¦ä¹ è¯¯å·®è®¢æ­£ -> è®¢æ­£æ•ˆæžœæ£€éªŒ -> DeepSeek AI Agent
 """
 
 import os
@@ -18,167 +18,174 @@ from tools.data_checker import check_data
 from tools.forecast_evaluator import evaluate_forecast
 from tools.ml_correction import machine_learning_correction
 
-# Streamlit Cloud 部署兼容：若在 Secrets 中配置了 Key，则写入环境变量供 Agent 读取
-if "OPENAI_API_KEY" in st.secrets:
-    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+# Streamlit Cloud éƒ¨ç½²å…¼å®¹ï¼šè‹¥åœ¨ Secrets ä¸­é…ç½®äº† Keyï¼Œåˆ™å†™å…¥çŽ¯å¢ƒå˜é‡ä¾› Agent è¯»å–ã€‚
+# æ³¨æ„ï¼šæœ¬åœ°æœªé…ç½® secrets.toml æ—¶ï¼Œè®¿é—® st.secrets ä¼šæŠ›å¼‚å¸¸ï¼Œéœ€æ•èŽ·åŽå¿½ç•¥
+#ï¼ˆæ­¤æ—¶æ”¹ç”± .env ä¸­çš„ Key ç”Ÿæ•ˆï¼Œè§ agent/weather_agent.pyï¼‰ã€‚
+try:
+    if "OPENAI_API_KEY" in st.secrets:
+        os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+except Exception:
+    pass
 
-# 内置示例数据的路径（相对项目根目录）
+# å†…ç½®ç¤ºä¾‹æ•°æ®çš„è·¯å¾„ï¼ˆåŸºäºŽæœ¬æ–‡ä»¶æ‰€åœ¨ç›®å½•ï¼Œé¿å…å·¥ä½œç›®å½•å˜åŒ–å¯¼è‡´æ‰¾ä¸åˆ°ï¼‰
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_PATH = os.path.join(BASE_DIR, "data", "sample_weather.csv")
 
 
 @st.cache_data
 def load_sample_data(path):
-    """读取内置示例数据（带缓存，避免每次刷新都重复读盘）。"""
+    """è¯»å–å†…ç½®ç¤ºä¾‹æ•°æ®ï¼ˆå¸¦ç¼“å­˜ï¼Œé¿å…æ¯æ¬¡åˆ·æ–°éƒ½é‡å¤è¯»ç›˜ï¼‰ã€‚"""
     return pd.read_csv(path)
 
 
-# ---------------- 页面基础设置 ----------------
+# ---------------- é¡µé¢åŸºç¡€è®¾ç½® ----------------
 st.set_page_config(
     page_title="WeatherAgent",
     layout="wide",
 )
 
 st.title("WeatherAgent")
-st.markdown("### AI气象预报智能分析与误差订正系统")
+st.markdown("### AIæ°”è±¡é¢„æŠ¥æ™ºèƒ½åˆ†æžä¸Žè¯¯å·®è®¢æ­£ç³»ç»Ÿ")
 
 st.markdown("---")
 
-# ---------------- ① 项目概览 ----------------
-st.header("① 项目概览")
+# ---------------- â‘  é¡¹ç›®æ¦‚è§ˆ ----------------
+st.header("â‘  é¡¹ç›®æ¦‚è§ˆ")
 st.markdown(
     """
-    本项目尝试将**气象数据分析、机器学习和 LLM Agent** 相结合，
-    用于气象预报误差分析与后处理实验。
+    æœ¬é¡¹ç›®å°è¯•å°†**æ°”è±¡æ•°æ®åˆ†æžã€æœºå™¨å­¦ä¹ å’Œ LLM Agent** ç›¸ç»“åˆï¼Œ
+    ç”¨äºŽæ°”è±¡é¢„æŠ¥è¯¯å·®åˆ†æžä¸ŽåŽå¤„ç†å®žéªŒã€‚
 
-    **主要功能：**
-    1. 气象数据质量检查
-    2. 预报误差评价
-    3. MAE、RMSE、Bias 计算
-    4. Random Forest 误差订正
-    5. 订正前后效果对比
-    6. 特征重要性分析
-    7. DeepSeek AI 气象分析 Agent
+    **ä¸»è¦åŠŸèƒ½ï¼š**
+    1. æ°”è±¡æ•°æ®è´¨é‡æ£€æŸ¥
+    2. é¢„æŠ¥è¯¯å·®è¯„ä»·
+    3. MAEã€RMSEã€Bias è®¡ç®—
+    4. Random Forest è¯¯å·®è®¢æ­£
+    5. è®¢æ­£å‰åŽæ•ˆæžœå¯¹æ¯”
+    6. ç‰¹å¾é‡è¦æ€§åˆ†æž
+    7. DeepSeek AI æ°”è±¡åˆ†æž Agent
     """
 )
 
-# 方法说明（可展开）
-with st.expander("方法说明"):
+# æ–¹æ³•è¯´æ˜Žï¼ˆå¯å±•å¼€ï¼‰
+with st.expander("æ–¹æ³•è¯´æ˜Ž"):
     st.markdown(
         """
-        **1. 预报误差定义**
-        `error = forecast - observed`（预报值减观测值）
-        - error > 0：预报偏高（高估）；error < 0：预报偏低（低估）
+        **1. é¢„æŠ¥è¯¯å·®å®šä¹‰**
+        `error = forecast - observed`ï¼ˆé¢„æŠ¥å€¼å‡è§‚æµ‹å€¼ï¼‰
+        - error > 0ï¼šé¢„æŠ¥åé«˜ï¼ˆé«˜ä¼°ï¼‰ï¼›error < 0ï¼šé¢„æŠ¥åä½Žï¼ˆä½Žä¼°ï¼‰
 
-        **2. 预报评价指标**
+        **2. é¢„æŠ¥è¯„ä»·æŒ‡æ ‡**
         - MAE = mean(|error|)
-        - RMSE = sqrt(mean(error²))
+        - RMSE = sqrt(mean(errorÂ²))
         - Bias = mean(error)
 
-        **3. 机器学习误差订正**
-        使用 Random Forest 学习「订正量」`correction = observed - forecast`：
+        **3. æœºå™¨å­¦ä¹ è¯¯å·®è®¢æ­£**
+        ä½¿ç”¨ Random Forest å­¦ä¹ ã€Œè®¢æ­£é‡ã€`correction = observed - forecast`ï¼š
         `predicted_correction = f(forecast, humidity, pressure, wind_speed, hour, month)`
-        然后 `corrected_forecast = forecast + predicted_correction`
+        ç„¶åŽ `corrected_forecast = forecast + predicted_correction`
 
-        **4. 数据划分**
-        按时间顺序划分：前 80% 训练集、后 20% 测试集，不随机打乱。
+        **4. éªŒè¯æ–¹å¼ï¼šæ»šåŠ¨çª—å£äº¤å‰éªŒè¯**
+        è®­ç»ƒçª—å£é€æŠ˜æ‰©å¤§ã€æµ‹è¯•æ®µä¾æ¬¡åŽç§»ä¸”äº’ä¸é‡å ï¼ˆå…± 3 æŠ˜ï¼Œæ¯æŠ˜æµ‹è¯•çº¦ 20% æ•°æ®ï¼‰ï¼›
+        æ¯ä¸€æŠ˜çš„è®­ç»ƒæ•°æ®å…¨éƒ¨ä½äºŽæµ‹è¯•æ•°æ®ä¹‹å‰ï¼Œæ— æ•°æ®æ³„æ¼ï¼›
+        æœ€ç»ˆæ±‡æ€»å„æŠ˜æŒ‡æ ‡ä¸ºã€Œå‡å€¼ Â± æ ‡å‡†å·®ã€ï¼Œåæ˜ è®¢æ­£æ•ˆæžœçš„ç¨³å®šæ€§ã€‚
         """
     )
 
 st.markdown("---")
 
-# ---------------- ② 数据基本情况 ----------------
-st.header("② 数据基本情况")
-st.markdown("上传你自己的 CSV 数据文件；不上传则自动使用内置示例数据。")
+# ---------------- â‘¡ æ•°æ®åŸºæœ¬æƒ…å†µ ----------------
+st.header("â‘¡ æ•°æ®åŸºæœ¬æƒ…å†µ")
+st.markdown("ä¸Šä¼ ä½ è‡ªå·±çš„ CSV æ•°æ®æ–‡ä»¶ï¼›ä¸ä¸Šä¼ åˆ™è‡ªåŠ¨ä½¿ç”¨å†…ç½®ç¤ºä¾‹æ•°æ®ã€‚")
 
-uploaded_file = st.file_uploader("选择 CSV 文件（可选）", type=["csv"])
+uploaded_file = st.file_uploader("é€‰æ‹© CSV æ–‡ä»¶ï¼ˆå¯é€‰ï¼‰", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    data_source = "用户上传文件"
+    data_source = "ç”¨æˆ·ä¸Šä¼ æ–‡ä»¶"
 else:
     df = load_sample_data(SAMPLE_PATH)
-    data_source = "内置示例数据 sample_weather.csv"
+    data_source = "å†…ç½®ç¤ºä¾‹æ•°æ® sample_weather.csv"
 
-st.success(f"当前数据来源：{data_source}")
+st.success(f"å½“å‰æ•°æ®æ¥æºï¼š{data_source}")
 
 col1, col2 = st.columns(2)
-col1.metric("数据行数", len(df))
-col2.metric("数据列数", len(df.columns))
+col1.metric("æ•°æ®è¡Œæ•°", len(df))
+col2.metric("æ•°æ®åˆ—æ•°", len(df.columns))
 
-st.subheader("数据预览")
+st.subheader("æ•°æ®é¢„è§ˆ")
 st.dataframe(df.head(10))
 
-# 开始基础分析按钮
-if st.button("开始气象数据分析", type="primary"):
+# å¼€å§‹åŸºç¡€åˆ†æžæŒ‰é’®
+if st.button("å¼€å§‹æ°”è±¡æ•°æ®åˆ†æž", type="primary"):
     st.session_state["analyzed"] = True
 
 if st.session_state.get("analyzed", False):
     st.markdown("---")
 
-    # ---------------- ③ 数据质量检查 ----------------
-    st.header("③ 数据质量检查")
+    # ---------------- â‘¢ æ•°æ®è´¨é‡æ£€æŸ¥ ----------------
+    st.header("â‘¢ æ•°æ®è´¨é‡æ£€æŸ¥")
 
     report = check_data(df)
 
     if report["ok"]:
-        st.success("数据基础检查通过：必要字段齐全，时间字段可正常解析。")
+        st.success("æ•°æ®åŸºç¡€æ£€æŸ¥é€šè¿‡ï¼šå¿…è¦å­—æ®µé½å…¨ï¼Œæ—¶é—´å­—æ®µå¯æ­£å¸¸è§£æžã€‚")
     else:
-        st.error("数据存在问题，请查看下方明细。")
+        st.error("æ•°æ®å­˜åœ¨é—®é¢˜ï¼Œè¯·æŸ¥çœ‹ä¸‹æ–¹æ˜Žç»†ã€‚")
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("重复行数", report["duplicate_rows"])
-    col2.metric("缺失值总数", sum(report["missing_values"].values()))
-    col3.metric("异常值总数", sum(report["outliers"].values()))
+    col1.metric("é‡å¤è¡Œæ•°", report["duplicate_rows"])
+    col2.metric("ç¼ºå¤±å€¼æ€»æ•°", sum(report["missing_values"].values()))
+    col3.metric("å¼‚å¸¸å€¼æ€»æ•°", sum(report["outliers"].values()))
 
-    st.subheader("必要字段")
+    st.subheader("å¿…è¦å­—æ®µ")
     if report["missing_fields"]:
-        st.error("缺失字段：" + "、".join(report["missing_fields"]))
+        st.error("ç¼ºå¤±å­—æ®µï¼š" + "ã€".join(report["missing_fields"]))
     else:
-        st.success("所有必要字段均存在。")
+        st.success("æ‰€æœ‰å¿…è¦å­—æ®µå‡å­˜åœ¨ã€‚")
 
-    st.subheader("时间字段")
+    st.subheader("æ—¶é—´å­—æ®µ")
     if report["time_ok"]:
-        st.success("time 字段可正常解析为日期时间。")
+        st.success("time å­—æ®µå¯æ­£å¸¸è§£æžä¸ºæ—¥æœŸæ—¶é—´ã€‚")
     else:
         st.error(report["time_issue"])
 
-    st.subheader("字段类型")
+    st.subheader("å­—æ®µç±»åž‹")
     st.write(report["dtypes"])
     for issue in report["type_issues"]:
         st.error(issue)
 
-    st.subheader("缺失值统计")
+    st.subheader("ç¼ºå¤±å€¼ç»Ÿè®¡")
     st.write(report["missing_values"])
 
-    st.subheader("异常值统计（依据物理合理范围）")
+    st.subheader("å¼‚å¸¸å€¼ç»Ÿè®¡ï¼ˆä¾æ®ç‰©ç†åˆç†èŒƒå›´ï¼‰")
     st.write(report["outliers"])
 
     st.markdown("---")
 
-    # ---------------- ④ 原始预报检验 ----------------
-    st.header("④ 原始预报检验")
+    # ---------------- â‘£ åŽŸå§‹é¢„æŠ¥æ£€éªŒ ----------------
+    st.header("â‘£ åŽŸå§‹é¢„æŠ¥æ£€éªŒ")
     st.markdown(
         """
-        由 Python 真实计算三个误差指标（`error = 预报 - 实况`）：
-        - **MAE**（平均绝对误差）：`mean(|error|)`
-        - **RMSE**（均方根误差）：`sqrt(mean(error²))`
-        - **Bias**（平均偏差）：`mean(error)`，正值表示预报系统性偏高
+        ç”± Python çœŸå®žè®¡ç®—ä¸‰ä¸ªè¯¯å·®æŒ‡æ ‡ï¼ˆ`error = é¢„æŠ¥ - å®žå†µ`ï¼‰ï¼š
+        - **MAE**ï¼ˆå¹³å‡ç»å¯¹è¯¯å·®ï¼‰ï¼š`mean(|error|)`
+        - **RMSE**ï¼ˆå‡æ–¹æ ¹è¯¯å·®ï¼‰ï¼š`sqrt(mean(errorÂ²))`
+        - **Bias**ï¼ˆå¹³å‡åå·®ï¼‰ï¼š`mean(error)`ï¼Œæ­£å€¼è¡¨ç¤ºé¢„æŠ¥ç³»ç»Ÿæ€§åé«˜
         """
     )
 
     if "observed_temperature" not in df.columns or "forecast_temperature" not in df.columns:
-        st.warning("缺少观测温度或预报温度字段，无法进行误差检验。")
+        st.warning("ç¼ºå°‘è§‚æµ‹æ¸©åº¦æˆ–é¢„æŠ¥æ¸©åº¦å­—æ®µï¼Œæ— æ³•è¿›è¡Œè¯¯å·®æ£€éªŒã€‚")
     else:
         metrics = evaluate_forecast(df)
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("MAE 平均绝对误差", f"{metrics['MAE']:.3f} °C")
-        col2.metric("RMSE 均方根误差", f"{metrics['RMSE']:.3f} °C")
-        col3.metric("Bias 平均偏差", f"{metrics['Bias']:.3f} °C")
+        col1.metric("MAE å¹³å‡ç»å¯¹è¯¯å·®", f"{metrics['MAE']:.3f} Â°C")
+        col2.metric("RMSE å‡æ–¹æ ¹è¯¯å·®", f"{metrics['RMSE']:.3f} Â°C")
+        col3.metric("Bias å¹³å‡åå·®", f"{metrics['Bias']:.3f} Â°C")
 
-        # 观测 vs 原始预报曲线
-        st.subheader("观测温度 vs 原始预报温度")
+        # è§‚æµ‹ vs åŽŸå§‹é¢„æŠ¥æ›²çº¿
+        st.subheader("è§‚æµ‹æ¸©åº¦ vs åŽŸå§‹é¢„æŠ¥æ¸©åº¦")
         time = pd.to_datetime(df["time"], errors="coerce")
         observed = pd.to_numeric(df["observed_temperature"], errors="coerce")
         forecast = pd.to_numeric(df["forecast_temperature"], errors="coerce")
@@ -187,29 +194,34 @@ if st.session_state.get("analyzed", False):
         fig.add_trace(go.Scatter(x=time, y=observed, mode="lines", name="Observed"))
         fig.add_trace(go.Scatter(x=time, y=forecast, mode="lines", name="Raw Forecast"))
         fig.update_layout(
-            title="观测温度 vs 原始预报温度",
-            xaxis_title="时间",
-            yaxis_title="Temperature (°C)",
-            legend_title="图例",
+            title="è§‚æµ‹æ¸©åº¦ vs åŽŸå§‹é¢„æŠ¥æ¸©åº¦",
+            xaxis_title="æ—¶é—´",
+            yaxis_title="Temperature (Â°C)",
+            legend_title="å›¾ä¾‹",
             height=400,
         )
         st.plotly_chart(fig, width="stretch")
 
-# ---------------- 机器学习订正按钮 ----------------
+# ---------------- æœºå™¨å­¦ä¹ è®¢æ­£æŒ‰é’® ----------------
 st.markdown("---")
-if st.button("开始机器学习订正", type="primary"):
+if st.button("å¼€å§‹æœºå™¨å­¦ä¹ è®¢æ­£", type="primary"):
     st.session_state["ml_done"] = True
 
 if st.session_state.get("ml_done", False):
-    # ---------------- ⑤ 机器学习误差订正 ----------------
-    st.header("⑤ 机器学习误差订正")
+    # ---------------- â‘¤ æœºå™¨å­¦ä¹ è¯¯å·®è®¢æ­£ ----------------
+    st.header("â‘¤ æœºå™¨å­¦ä¹ è¯¯å·®è®¢æ­£ï¼ˆæ»šåŠ¨çª—å£äº¤å‰éªŒè¯ï¼‰")
     st.markdown(
         """
-        使用 **Random Forest** 学习预报的「订正量」`correction = observed - forecast`，
-        再用 `corrected = forecast + predicted_correction` 完成订正。
+        ä½¿ç”¨ **Random Forest** å­¦ä¹ é¢„æŠ¥çš„ã€Œè®¢æ­£é‡ã€`correction = observed - forecast`ï¼Œ
+        å†ç”¨ `corrected = forecast + predicted_correction` å®Œæˆè®¢æ­£ã€‚
 
-        特征：预报温度、湿度、气压、风速、小时、月份。
-        按时间顺序划分（前 80% 训练、后 20% 测试），测试集不参与训练。
+        ç‰¹å¾ï¼šé¢„æŠ¥æ¸©åº¦ã€æ¹¿åº¦ã€æ°”åŽ‹ã€é£Žé€Ÿã€å°æ—¶ã€æœˆä»½ã€‚
+
+        éªŒè¯æ–¹å¼ï¼š**æ»šåŠ¨çª—å£äº¤å‰éªŒè¯**ï¼ˆrolling window cross-validationï¼‰â€”â€”
+        è®­ç»ƒçª—å£é€æŠ˜æ‰©å¤§ã€æµ‹è¯•æ®µä¾æ¬¡åŽç§»ä¸”äº’ä¸é‡å ï¼Œå…± 3 æŠ˜ï¼›
+        æ¯æŠ˜ç‹¬ç«‹è®­ç»ƒå¹¶æ£€éªŒï¼Œæœ€ç»ˆæ±‡æ€»ä¸º**å‡å€¼ Â± æ ‡å‡†å·®**ï¼Œ
+        ä»¥ä½“çŽ°è®¢æ­£æ•ˆæžœåœ¨ä¸åŒæ—¶é—´æ®µçš„ç¨³å®šæ€§ï¼Œè€Œéžå•æ¬¡åˆ’åˆ†çš„å¶ç„¶ç»“æžœã€‚
+        æ¯ä¸€æŠ˜çš„è®­ç»ƒæ•°æ®å…¨éƒ¨ä½äºŽæµ‹è¯•æ•°æ®ä¹‹å‰ï¼Œä¸å­˜åœ¨æ•°æ®æ³„æ¼ã€‚
         """
     )
 
@@ -223,74 +235,144 @@ if st.session_state.get("ml_done", False):
     missing_ml = [c for c in ml_required if c not in df.columns]
 
     if missing_ml:
-        st.warning("缺少必要字段，无法进行机器学习订正：" + "、".join(missing_ml))
+        st.warning("ç¼ºå°‘å¿…è¦å­—æ®µï¼Œæ— æ³•è¿›è¡Œæœºå™¨å­¦ä¹ è®¢æ­£ï¼š" + "ã€".join(missing_ml))
         st.session_state.pop("ml_result", None)
     else:
-        with st.spinner("正在训练随机森林模型……"):
+        with st.spinner("æ­£åœ¨è¿›è¡Œæ»šåŠ¨çª—å£äº¤å‰éªŒè¯ï¼ˆé€æŠ˜è®­ç»ƒéšæœºæ£®æž—ï¼‰â€¦â€¦"):
             ml_result = machine_learning_correction(df)
 
         st.session_state["ml_result"] = ml_result
 
         st.success(
-            f"训练完成：训练样本 {ml_result['train_size']} 条，"
-            f"测试样本 {ml_result['test_size']} 条。"
+            f"éªŒè¯å®Œæˆï¼šå…± {ml_result['n_splits']} æŠ˜ï¼Œ"
+            f"æ€»æœ‰æ•ˆæ ·æœ¬ {ml_result['total_size']} æ¡ï¼Œ"
+            f"æ¯æŠ˜æµ‹è¯• {ml_result['test_len_per_fold']} æ¡"
+            f"ï¼ˆç¬¬ 1 æŠ˜è®­ç»ƒ {ml_result['initial_train_size']} æ¡ï¼Œè®­ç»ƒçª—å£é€æŠ˜æ‰©å¤§ï¼‰ã€‚"
         )
 
-        raw = ml_result["raw"]
-        cor = ml_result["corrected"]
+        folds = ml_result["folds"]
+        raw_mean = ml_result["raw_mean"]
+        cor_mean = ml_result["corrected_mean"]
+        cor_std = ml_result["corrected_std"]
 
-        st.subheader("订正前后误差指标（测试集）")
+        # æ¯ä¸€æŠ˜çš„è¯¦ç»†ç»“æžœ
+        st.subheader(f"æ¯ä¸€æŠ˜çš„æ£€éªŒç»“æžœï¼ˆå…± {ml_result['n_splits']} æŠ˜ï¼‰")
+        folds_df = pd.DataFrame(
+            [
+                {
+                    "æŠ˜": f["fold"],
+                    "è®­ç»ƒæ ·æœ¬": f["train_size"],
+                    "æµ‹è¯•æ ·æœ¬": f["test_size"],
+                    "æµ‹è¯•æ—¶æ®µ": f"{f['test_start']} ~ {f['test_end']}",
+                    "åŽŸå§‹ MAE": round(f["raw"]["MAE"], 3),
+                    "è®¢æ­£åŽ MAE": round(f["corrected"]["MAE"], 3),
+                    "åŽŸå§‹ RMSE": round(f["raw"]["RMSE"], 3),
+                    "è®¢æ­£åŽ RMSE": round(f["corrected"]["RMSE"], 3),
+                    "åŽŸå§‹ Bias": round(f["raw"]["Bias"], 3),
+                    "è®¢æ­£åŽ Bias": round(f["corrected"]["Bias"], 3),
+                }
+                for f in folds
+            ]
+        )
+        st.dataframe(folds_df.set_index("æŠ˜"))
+
+        # æ¯æŠ˜ MAE å¯¹æ¯”æŸ±çŠ¶å›¾
+        fig_folds = go.Figure()
+        fig_folds.add_trace(
+            go.Bar(
+                x=folds_df["æŠ˜"].astype(str),
+                y=folds_df["åŽŸå§‹ MAE"],
+                name="åŽŸå§‹é¢„æŠ¥ MAE",
+            )
+        )
+        fig_folds.add_trace(
+            go.Bar(
+                x=folds_df["æŠ˜"].astype(str),
+                y=folds_df["è®¢æ­£åŽ MAE"],
+                name="è®¢æ­£åŽ MAE",
+            )
+        )
+        fig_folds.update_layout(
+            title="å„æŠ˜ MAE å¯¹æ¯”ï¼ˆæ»šåŠ¨çª—å£äº¤å‰éªŒè¯ï¼‰",
+            xaxis_title="æŠ˜",
+            yaxis_title="MAE (Â°C)",
+            barmode="group",
+            legend_title="å›¾ä¾‹",
+            height=350,
+        )
+        st.plotly_chart(fig_folds, width="stretch")
+
+        # æ•´ä½“æŒ‡æ ‡ï¼šå„æŠ˜å‡å€¼ Â± æ ‡å‡†å·®
+        st.subheader("æ•´ä½“è¡¨çŽ°ï¼ˆå„æŠ˜å‡å€¼ Â± æ ‡å‡†å·®ï¼‰")
         c1, c2 = st.columns(2)
-        c1.metric("原始预报 MAE", f"{raw['MAE']:.3f} °C")
-        c2.metric("订正后 MAE", f"{cor['MAE']:.3f} °C")
+        c1.metric("åŽŸå§‹é¢„æŠ¥ MAEï¼ˆå‡å€¼ï¼‰", f"{raw_mean['MAE']:.3f} Â°C")
+        c2.metric(
+            "è®¢æ­£åŽ MAEï¼ˆå‡å€¼ Â± æ ‡å‡†å·®ï¼‰",
+            f"{cor_mean['MAE']:.3f} Â± {cor_std['MAE']:.3f} Â°C",
+        )
 
         c1, c2 = st.columns(2)
-        c1.metric("原始预报 RMSE", f"{raw['RMSE']:.3f} °C")
-        c2.metric("订正后 RMSE", f"{cor['RMSE']:.3f} °C")
+        c1.metric("åŽŸå§‹é¢„æŠ¥ RMSEï¼ˆå‡å€¼ï¼‰", f"{raw_mean['RMSE']:.3f} Â°C")
+        c2.metric(
+            "è®¢æ­£åŽ RMSEï¼ˆå‡å€¼ Â± æ ‡å‡†å·®ï¼‰",
+            f"{cor_mean['RMSE']:.3f} Â± {cor_std['RMSE']:.3f} Â°C",
+        )
 
         c1, c2 = st.columns(2)
-        c1.metric("原始预报 Bias", f"{raw['Bias']:.3f} °C")
-        c2.metric("订正后 Bias", f"{cor['Bias']:.3f} °C")
+        c1.metric("åŽŸå§‹é¢„æŠ¥ Biasï¼ˆå‡å€¼ï¼‰", f"{raw_mean['Bias']:.3f} Â°C")
+        c2.metric(
+            "è®¢æ­£åŽ Biasï¼ˆå‡å€¼ Â± æ ‡å‡†å·®ï¼‰",
+            f"{cor_mean['Bias']:.3f} Â± {cor_std['Bias']:.3f} Â°C",
+        )
 
-        # 改善率（如实显示，可能为负）
-        mae_improve = (raw["MAE"] - cor["MAE"]) / raw["MAE"] * 100
-        rmse_improve = (raw["RMSE"] - cor["RMSE"]) / raw["RMSE"] * 100
+        # æ”¹å–„çŽ‡ï¼ˆå„æŠ˜å‡å€¼ï¼Œå¦‚å®žæ˜¾ç¤ºï¼Œå¯èƒ½ä¸ºè´Ÿï¼‰
         c1, c2 = st.columns(2)
-        c1.metric("MAE 改善率", f"{mae_improve:.2f} %")
-        c2.metric("RMSE 改善率", f"{rmse_improve:.2f} %")
+        c1.metric(
+            "MAE æ”¹å–„çŽ‡ï¼ˆå„æŠ˜å‡å€¼ï¼‰",
+            f"{ml_result['mae_improve_mean']:.2f} %",
+        )
+        c2.metric(
+            "RMSE æ”¹å–„çŽ‡ï¼ˆå„æŠ˜å‡å€¼ï¼‰",
+            f"{ml_result['rmse_improve_mean']:.2f} %",
+        )
 
-        # 特征重要性（表格 + 柱状图）
-        st.subheader("Random Forest 特征重要性")
+        st.caption(
+            "æ ‡å‡†å·®è¶Šå°ï¼Œè¯´æ˜Žè®¢æ­£æ•ˆæžœåœ¨ä¸åŒæ—¶é—´æ®µè¶Šç¨³å®šï¼›"
+            "ã€Œå‡å€¼ Â± æ ‡å‡†å·®ã€å…±åŒåæ˜ æ¨¡åž‹æ•ˆæžœçš„å…¸åž‹æ°´å¹³ä¸Žæ³¢åŠ¨èŒƒå›´ã€‚"
+        )
+
+        # ç‰¹å¾é‡è¦æ€§ï¼ˆå„æŠ˜å¹³å‡ï¼Œè¡¨æ ¼ + æŸ±çŠ¶å›¾ï¼‰
+        st.subheader("Random Forest ç‰¹å¾é‡è¦æ€§ï¼ˆå„æŠ˜å¹³å‡ï¼‰")
         importance_df = pd.DataFrame(
             list(ml_result["importance"].items()),
-            columns=["特征", "重要性"],
+            columns=["ç‰¹å¾", "é‡è¦æ€§"],
         )
-        st.dataframe(importance_df.set_index("特征"))
+        st.dataframe(importance_df.set_index("ç‰¹å¾"))
 
         fig_imp = go.Figure(
-            go.Bar(x=importance_df["特征"], y=importance_df["重要性"])
+            go.Bar(x=importance_df["ç‰¹å¾"], y=importance_df["é‡è¦æ€§"])
         )
         fig_imp.update_layout(
-            title="Random Forest 特征重要性",
-            xaxis_title="特征",
-            yaxis_title="重要性",
+            title="Random Forest ç‰¹å¾é‡è¦æ€§",
+            xaxis_title="ç‰¹å¾",
+            yaxis_title="é‡è¦æ€§",
             height=350,
         )
         st.plotly_chart(fig_imp, width="stretch")
 
     st.markdown("---")
 
-    # ---------------- ⑥ 可视化分析 ----------------
-    st.header("⑥ 可视化分析")
+    # ---------------- â‘¥ å¯è§†åŒ–åˆ†æž ----------------
+    st.header("â‘¥ å¯è§†åŒ–åˆ†æž")
 
     ml_result = st.session_state.get("ml_result")
     if ml_result is None:
-        st.info("请先完成机器学习订正。")
+        st.info("è¯·å…ˆå®Œæˆæœºå™¨å­¦ä¹ è®¢æ­£ã€‚")
     else:
         test_df = ml_result["test_results"]
         time = pd.to_datetime(test_df["time"], errors="coerce")
 
-        st.subheader("观测 vs 原始预报 vs 订正后预报")
+        st.subheader("è§‚æµ‹ vs åŽŸå§‹é¢„æŠ¥ vs è®¢æ­£åŽé¢„æŠ¥ï¼ˆæ»šåŠ¨éªŒè¯å„æŠ˜æµ‹è¯•æ®µï¼‰")
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(x=time, y=test_df["observed_temperature"], mode="lines", name="Observed")
@@ -302,15 +384,15 @@ if st.session_state.get("ml_done", False):
             go.Scatter(x=time, y=test_df["corrected_forecast"], mode="lines", name="Corrected Forecast")
         )
         fig.update_layout(
-            title="订正前后温度对比（测试集）",
-            xaxis_title="时间",
-            yaxis_title="Temperature (°C)",
-            legend_title="图例",
+            title="è®¢æ­£å‰åŽæ¸©åº¦å¯¹æ¯”ï¼ˆæ»šåŠ¨éªŒè¯å„æŠ˜æµ‹è¯•æ®µï¼‰",
+            xaxis_title="æ—¶é—´",
+            yaxis_title="Temperature (Â°C)",
+            legend_title="å›¾ä¾‹",
             height=400,
         )
         st.plotly_chart(fig, width="stretch")
 
-        st.subheader("原始误差 vs 订正后误差")
+        st.subheader("åŽŸå§‹è¯¯å·® vs è®¢æ­£åŽè¯¯å·®")
         raw_error = test_df["forecast_temperature"] - test_df["observed_temperature"]
         corrected_error = test_df["corrected_forecast"] - test_df["observed_temperature"]
 
@@ -322,100 +404,120 @@ if st.session_state.get("ml_done", False):
             go.Scatter(x=time, y=corrected_error, mode="lines", name="Corrected Forecast Error")
         )
         fig2.update_layout(
-            title="预报误差对比（测试集）",
-            xaxis_title="时间",
-            yaxis_title="Error (°C)",
-            legend_title="图例",
+            title="é¢„æŠ¥è¯¯å·®å¯¹æ¯”ï¼ˆæ»šåŠ¨éªŒè¯å„æŠ˜æµ‹è¯•æ®µï¼‰",
+            xaxis_title="æ—¶é—´",
+            yaxis_title="Error (Â°C)",
+            legend_title="å›¾ä¾‹",
             height=400,
         )
         st.plotly_chart(fig2, width="stretch")
 
     st.markdown("---")
 
-    # ---------------- 实验结果总结（自动生成） ----------------
-    st.header("实验结果总结")
+    # ---------------- å®žéªŒç»“æžœæ€»ç»“ï¼ˆè‡ªåŠ¨ç”Ÿæˆï¼‰ ----------------
+    st.header("å®žéªŒç»“æžœæ€»ç»“")
 
     ml_result = st.session_state.get("ml_result")
     if ml_result is None:
-        st.info("请先完成机器学习订正。")
+        st.info("è¯·å…ˆå®Œæˆæœºå™¨å­¦ä¹ è®¢æ­£ã€‚")
     else:
-        raw = ml_result["raw"]
-        cor = ml_result["corrected"]
-        mae_improve = (raw["MAE"] - cor["MAE"]) / raw["MAE"] * 100
-        rmse_improve = (raw["RMSE"] - cor["RMSE"]) / raw["RMSE"] * 100
+        raw_mean = ml_result["raw_mean"]
+        cor_mean = ml_result["corrected_mean"]
+        cor_std = ml_result["corrected_std"]
 
         summary_df = pd.DataFrame(
             {
-                "指标": ["MAE", "RMSE", "Bias"],
-                "原始预报": [round(raw["MAE"], 4), round(raw["RMSE"], 4), round(raw["Bias"], 4)],
-                "订正后": [round(cor["MAE"], 4), round(cor["RMSE"], 4), round(cor["Bias"], 4)],
+                "æŒ‡æ ‡": ["MAE", "RMSE", "Bias"],
+                "åŽŸå§‹é¢„æŠ¥ï¼ˆå„æŠ˜å‡å€¼ï¼‰": [
+                    round(raw_mean["MAE"], 4),
+                    round(raw_mean["RMSE"], 4),
+                    round(raw_mean["Bias"], 4),
+                ],
+                "è®¢æ­£åŽï¼ˆå„æŠ˜å‡å€¼ï¼‰": [
+                    round(cor_mean["MAE"], 4),
+                    round(cor_mean["RMSE"], 4),
+                    round(cor_mean["Bias"], 4),
+                ],
+                "è®¢æ­£åŽï¼ˆå„æŠ˜æ ‡å‡†å·®ï¼‰": [
+                    round(cor_std["MAE"], 4),
+                    round(cor_std["RMSE"], 4),
+                    round(cor_std["Bias"], 4),
+                ],
             }
-        ).set_index("指标")
+        ).set_index("æŒ‡æ ‡")
         st.dataframe(summary_df)
 
         c1, c2 = st.columns(2)
-        c1.metric("MAE 改善率", f"{mae_improve:.2f} %")
-        c2.metric("RMSE 改善率", f"{rmse_improve:.2f} %")
+        c1.metric("MAE æ”¹å–„çŽ‡ï¼ˆå„æŠ˜å‡å€¼ï¼‰", f"{ml_result['mae_improve_mean']:.2f} %")
+        c2.metric("RMSE æ”¹å–„çŽ‡ï¼ˆå„æŠ˜å‡å€¼ï¼‰", f"{ml_result['rmse_improve_mean']:.2f} %")
 
-        if cor["MAE"] < raw["MAE"] and cor["RMSE"] < raw["RMSE"]:
+        if (
+            cor_mean["MAE"] < raw_mean["MAE"]
+            and cor_mean["RMSE"] < raw_mean["RMSE"]
+        ):
             st.success(
-                "机器学习订正后，测试集预报误差降低，"
-                "说明该模型在本次演示数据上具有一定的误差订正效果。"
+                f"æ»šåŠ¨çª—å£äº¤å‰éªŒè¯ï¼ˆ{ml_result['n_splits']} æŠ˜ï¼‰ç»“æžœæ˜¾ç¤ºï¼š"
+                "è®¢æ­£åŽå„æŠ˜å¹³å‡è¯¯å·®ä½ŽäºŽåŽŸå§‹é¢„æŠ¥ï¼Œ"
+                "è¯´æ˜Žè¯¥æ¨¡åž‹åœ¨å½“å‰æ¼”ç¤ºæ•°æ®çš„ä¸åŒæ—¶é—´æ®µä¸Šå‡å…·æœ‰ä¸€å®šçš„è¯¯å·®è®¢æ­£æ•ˆæžœï¼›"
+                "å„æŠ˜ç»“æžœçš„å…·ä½“æ³¢åŠ¨è¯·è§ä¸Šæ–¹æ ‡å‡†å·®ã€‚"
             )
         else:
             st.warning(
-                "本次机器学习订正未降低测试集误差，"
-                "说明当前特征和模型设置仍有进一步优化空间。"
+                "æœ¬æ¬¡æœºå™¨å­¦ä¹ è®¢æ­£æœªç¨³å®šé™ä½Žå„æŠ˜æµ‹è¯•æ®µè¯¯å·®ï¼Œ"
+                "è¯´æ˜Žå½“å‰ç‰¹å¾å’Œæ¨¡åž‹è®¾ç½®ä»æœ‰è¿›ä¸€æ­¥ä¼˜åŒ–ç©ºé—´ã€‚"
             )
 
         st.info(
-            "以上结果仅代表当前演示数据和测试集上的实验结果，"
-            "不能直接代表模型在其他时间、地点或天气条件下的实际预报能力。"
+            "ä»¥ä¸Šç»“æžœåŸºäºŽæ»šåŠ¨çª—å£äº¤å‰éªŒè¯ï¼ˆå„æŠ˜æµ‹è¯•æ®µäº’ä¸é‡å ã€"
+            "è®­ç»ƒæ•°æ®å…¨éƒ¨ä½äºŽæµ‹è¯•æ•°æ®ä¹‹å‰ï¼‰ï¼Œ"
+            "ä»…ä»£è¡¨å½“å‰æ¼”ç¤ºæ•°æ®ä¸Šçš„å®žéªŒç»“æžœï¼Œ"
+            "ä¸èƒ½ç›´æŽ¥ä»£è¡¨æ¨¡åž‹åœ¨å…¶ä»–æ—¶é—´ã€åœ°ç‚¹æˆ–å¤©æ°”æ¡ä»¶ä¸‹çš„å®žé™…é¢„æŠ¥èƒ½åŠ›ã€‚"
         )
 
-# ---------------- ⑦ AI 气象预报分析 Agent ----------------
+# ---------------- â‘¦ AI æ°”è±¡é¢„æŠ¥åˆ†æž Agent ----------------
 st.markdown("---")
-st.header("⑦ AI 气象预报分析 Agent")
+st.header("â‘¦ AI æ°”è±¡é¢„æŠ¥åˆ†æž Agent")
 
 st.markdown(
     """
-    AI Agent 负责理解用户自然语言问题，并调用 Python 气象分析工具获取真实计算结果，
-    再由 DeepSeek 对结果进行解释。
+    AI Agent è´Ÿè´£ç†è§£ç”¨æˆ·è‡ªç„¶è¯­è¨€é—®é¢˜ï¼Œå¹¶è°ƒç”¨ Python æ°”è±¡åˆ†æžå·¥å…·èŽ·å–çœŸå®žè®¡ç®—ç»“æžœï¼Œ
+    å†ç”± DeepSeek å¯¹ç»“æžœè¿›è¡Œè§£é‡Šã€‚
 
-    **分工：**
-    - Python 负责：数据读取、质量检查、MAE/RMSE/Bias 计算、随机森林订正等真实计算。
-    - DeepSeek 负责：理解问题、选择工具、解释结果（不自己计算数值）。
+    **åˆ†å·¥ï¼š**
+    - Python è´Ÿè´£ï¼šæ•°æ®è¯»å–ã€è´¨é‡æ£€æŸ¥ã€MAE/RMSE/Bias è®¡ç®—ã€éšæœºæ£®æž—è®¢æ­£ç­‰çœŸå®žè®¡ç®—ã€‚
+    - DeepSeek è´Ÿè´£ï¼šç†è§£é—®é¢˜ã€é€‰æ‹©å·¥å…·ã€è§£é‡Šç»“æžœï¼ˆä¸è‡ªå·±è®¡ç®—æ•°å€¼ï¼‰ã€‚
     """
 )
 
 st.markdown(
     """
-    **推荐问题：**
-    1. 原始预报效果怎么样？
-    2. 机器学习订正后改善了多少？
-    3. 哪个特征对误差订正最重要？
-    4. 为什么订正后 Bias 会发生变化？
-    5. 请全面分析当前实验结果及其局限性。
+    **æŽ¨èé—®é¢˜ï¼š**
+    1. åŽŸå§‹é¢„æŠ¥æ•ˆæžœæ€Žä¹ˆæ ·ï¼Ÿ
+    2. æœºå™¨å­¦ä¹ è®¢æ­£åŽæ”¹å–„äº†å¤šå°‘ï¼Ÿ
+    3. å“ªä¸ªç‰¹å¾å¯¹è¯¯å·®è®¢æ­£æœ€é‡è¦ï¼Ÿ
+    4. ä¸ºä»€ä¹ˆè®¢æ­£åŽ Bias ä¼šå‘ç”Ÿå˜åŒ–ï¼Ÿ
+    5. æ»šåŠ¨çª—å£äº¤å‰éªŒè¯å„æŠ˜çš„è®¢æ­£æ•ˆæžœç¨³å®šå—ï¼Ÿ
+    6. è¯·å…¨é¢åˆ†æžå½“å‰å®žéªŒç»“æžœåŠå…¶å±€é™æ€§ã€‚
     """
 )
 
-# 初始化聊天历史
+# åˆå§‹åŒ–èŠå¤©åŽ†å²
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
-# 显示历史消息
+# æ˜¾ç¤ºåŽ†å²æ¶ˆæ¯
 for msg in st.session_state["chat_history"]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 聊天输入框
-if prompt := st.chat_input("请输入你的气象分析问题..."):
+# èŠå¤©è¾“å…¥æ¡†
+if prompt := st.chat_input("è¯·è¾“å…¥ä½ çš„æ°”è±¡åˆ†æžé—®é¢˜..."):
     st.session_state["chat_history"].append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("正在分析……"):
+        with st.spinner("æ­£åœ¨åˆ†æžâ€¦â€¦"):
             agent = WeatherAgent(df)
             reply = agent.chat(prompt)
         st.markdown(reply)
