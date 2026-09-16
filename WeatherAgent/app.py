@@ -23,7 +23,8 @@ if "OPENAI_API_KEY" in st.secrets:
     os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
 # 内置示例数据的路径（相对项目根目录）
-SAMPLE_PATH = os.path.join("data", "sample_weather.csv")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SAMPLE_PATH = os.path.join(BASE_DIR, "data", "sample_weather.csv")
 
 
 @st.cache_data
