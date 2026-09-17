@@ -1,7 +1,7 @@
-"""首页：一屏之内说清“发现了什么、凭什么、有什么用”。
+"""首页：一个问题、两个入口，然后是完整的理解过程。
 
-排版顺序刻意做成 问题 → 结论 → 证据 → 意义 → 目录，
-并且把核心概念（振幅阻尼）放在第一眼就能看到的位置。
+顺序刻意做成：问题 → 入口 → 结论 → 看懂 → 证据 → 意义 → 目录。
+上半部分让人知道这是什么、可以怎么用；下半部分是理解这个结论的过程，保留不动。
 """
 
 from __future__ import annotations
@@ -28,6 +28,12 @@ from views.common import (
 FIGURES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "figures")
 
 
+def _goto(page_name: str) -> None:
+    """切换页面：写入会话状态后重跑，由 app.py 的导航读取。"""
+    st.session_state["goto"] = page_name
+    st.rerun()
+
+
 def render() -> None:
     head = headline_numbers()
     _, summary = run_ablation()
@@ -37,18 +43,57 @@ def render() -> None:
     nj = load_nanjing()
     minmax = amp.minmax_summary(nj)
 
+    # ---------------------------------------------------------------- 问题
     hero(
-        "WeatherAgent · 用真实数据回答一个具体问题",
-        f"以南京禄口站（ZSNJ）{head['n']:,} 小时真实观测为基准检验 GFS 2 米气温预报，"
-        f"诊断误差的结构，并检验误差订正与资料同化各自能把误差降到多少。"
-        f"数据时段 {head['start']:%Y-%m-%d} — {head['end']:%Y-%m-%d}。",
+        "误差会变吗？",
+        "同一个预报模式，误差是一个固定的数字，还是一个随条件变化的量？"
+        "如果是变化的，它随什么变、怎么变、有没有规律可循？"
+        "<br>这个网站用真实观测数据回答这个问题，并把分析方法开放出来。",
         large=True,
     )
 
+    # ---------------------------------------------------------------- 入口
+    left, right = st.columns(2, gap="large")
+    with left:
+        st.markdown(
+            """
+            <div class="card" style="height:auto;">
+              <div style="font-size:1.02rem;font-weight:700;color:#123a5f;">
+                📊 先看示例数据的答案
+              </div>
+              <div style="font-size:.87rem;color:#5b6b7b;line-height:1.7;margin-top:.35rem;">
+                南京禄口站 23,543 小时真实观测 + GFS 预报归档，
+                误差画像、核心发现、订正与资料同化的结果都已备好。
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("开始看示例分析 →", width="stretch", type="primary"):
+            _goto("📊 误差检验")
+    with right:
+        st.markdown(
+            """
+            <div class="card" style="height:auto;">
+              <div style="font-size:1.02rem;font-weight:700;color:#123a5f;">
+                📤 用我自己的数据算一遍
+              </div>
+              <div style="font-size:.87rem;color:#5b6b7b;line-height:1.7;margin-top:.35rem;">
+                上传一份“预报—观测”CSV，自动做质检、误差画像、振幅阻尼诊断、
+                订正方法对比，并导出订正后的结果。
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("上传我的数据 →", width="stretch"):
+            _goto("🔬 误差分析（可换数据）")
+
+    st.write("")
     st.markdown(
         """
         <div class="qbox">
-        <b>要回答的问题</b>　GFS 对南京 2 米气温的预报误差，是随机噪声，还是有结构的系统性偏差？
+        <b>下面要回答的问题</b>　GFS 对南京 2 米气温的预报误差，是随机噪声，还是有结构的系统性偏差？
         如果是结构，它长什么样、能不能被订正？
         </div>
         """,
@@ -56,14 +101,14 @@ def render() -> None:
     )
     st.write("")
 
-    # ------------------------------------------------------------------ 核心结论
+    # ---------------------------------------------------------------- 核心结论
     st.markdown(
         """
         <div style="border:1px solid #dde7f0;border-left:5px solid #2f7fb5;
                     border-radius:8px;padding:.85rem 1.05rem;background:#f8fbfd;">
           <div style="font-size:.74rem;color:#8a95a0;letter-spacing:.14em;">核 心 结 论</div>
           <div style="font-size:1.16rem;font-weight:700;color:#123a5f;margin:.28rem 0 .3rem 0;">
-            误差的形态是「振幅阻尼」：模式把温度的起伏压平了
+            误差会变。最主要的形态是「振幅阻尼」——模式把温度的起伏压平了
           </div>
           <div style="font-size:.93rem;color:#33475b;line-height:1.72;">
             不是整体偏暖或偏冷，而是<b>该冷的时候不够冷、该热的时候不够热</b>，越极端越明显；
@@ -88,7 +133,7 @@ def render() -> None:
         column.markdown(card(number, label), unsafe_allow_html=True)
     st.write("")
 
-    # ------------------------------------------------------------------ 概念图
+    # ---------------------------------------------------------------- 概念图
     st.subheader("一眼看懂：什么叫被压平")
     concept = os.path.join(FIGURES, "fig11_damping_concept.png")
     if os.path.exists(concept):
@@ -98,7 +143,7 @@ def render() -> None:
         "观测谷值 7 ℃ 被预报抬到约 10 ℃——**该高的时候不够高，该低的时候不够低**。"
     )
 
-    # ------------------------------------------------------------------ 证据
+    # ---------------------------------------------------------------- 证据
     st.subheader("四条独立证据")
     evidence = [
         (
@@ -131,7 +176,7 @@ def render() -> None:
             )
     st.caption("这四条在设计上相互独立，并且已经排除了“采样分辨率造成的假象”。详见「核心发现」页。")
 
-    # ------------------------------------------------------------------ 意义
+    # ---------------------------------------------------------------- 意义
     st.divider()
     st.subheader("这个发现有什么用")
     st.markdown(
@@ -173,7 +218,7 @@ def render() -> None:
             unsafe_allow_html=True,
         )
 
-    # ------------------------------------------------------------------ 图表
+    # ---------------------------------------------------------------- 图表
     st.write("")
     month_range = amp.range_by_month(nj)
     figure = go.Figure()
@@ -198,27 +243,37 @@ def render() -> None:
         "这正是冬季系统性偏暖、夏季系统性偏冷的来源。"
     )
 
-    # ------------------------------------------------------------------ 目录
+    # ---------------------------------------------------------------- 目录
     st.divider()
-    st.subheader("这个应用包含什么")
-    st.caption(
-        "左侧边栏切换页面。「订正工具」是能直接用的工具，"
-        "其余页面是围绕南京这一个数据集做的完整研究，顺序为：数据 → 检验 → 诊断 → 订正 → 同化 → 案例 → 局限。"
-    )
+    st.subheader("网站结构")
+    st.caption("左侧边栏切换页面。前两部分是入口和方法，中间是示例数据的完整分析结果。")
 
-    pages = [
-        ("🧰 订正工具（用你的数据）", "上传你自己的“预报—观测”数据：自动质检、诊断、比较订正方法，并导出订正后的 CSV"),
-        ("📐 数据与方法", "数据来源、指标定义，以及为什么必须用严格时序划分而不是随机划分"),
-        ("📊 误差检验", "从总体、季节、日变化、预报时效四个角度给误差画一张画像"),
-        ("🔍 核心发现：振幅阻尼", "先定义概念、再列出判据，然后用四组独立证据逐条对照"),
-        ("🧪 订正实验", "六个嵌套方法的消融对比：订正收益究竟来自哪一部分误差"),
-        ("🛰 资料同化实验（OI）", "6 站长三角真实观测的最优插值、留一站检验与参数敏感性"),
-        ("🌀 真实案例", "2024 年 1 月寒潮与 2024 年 8 月高温，严格样本外的过程检验"),
-        ("🧭 局限与展望", "被数据推翻的假设、已知边界，以及下一步可以做什么"),
-        ("🤖 研究助手", "用自然语言查询本项目的计算结果，不需要任何 API Key"),
+    groups = [
+        (
+            "入口与方法",
+            [
+                ("🔬 误差分析（可换数据）", "上传或载入数据，跑完整流水线并导出订正结果"),
+                ("📐 数据与方法", "数据从哪来、指标怎么算、为什么必须用严格时序划分"),
+            ],
+        ),
+        (
+            "示例数据的分析结果",
+            [
+                ("📊 误差检验", "总体、季节、日变化、预报时效四个角度"),
+                ("🔍 核心发现：振幅阻尼", "先定义、再列判据、然后四组独立证据逐条对照"),
+                ("🧪 订正实验", "六层嵌套消融：订正收益究竟来自哪一部分误差"),
+                ("🛰 资料同化实验（OI）", "6 站长三角真实观测的最优插值与留一站检验"),
+                ("🌀 真实案例", "2024 年 1 月寒潮、8 月高温的样本外检验"),
+                ("🧭 局限与展望", "被数据推翻的假设、已知边界、下一步"),
+                ("🤖 研究助手", "用自然语言查询本项目的计算结果，无需 API Key"),
+            ],
+        ),
     ]
-    for start in range(0, len(pages), 2):
-        for column, (title, text) in zip(st.columns(2), pages[start : start + 2]):
-            with column:
-                st.markdown(f"**{title}**")
-                st.caption(text)
+    for title, pages in groups:
+        st.markdown(f"**{title}**")
+        for start in range(0, len(pages), 2):
+            for column, (name, text) in zip(st.columns(2), pages[start : start + 2]):
+                with column:
+                    st.markdown(name)
+                    st.caption(text)
+        st.write("")

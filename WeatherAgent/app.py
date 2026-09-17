@@ -36,8 +36,8 @@ st.set_page_config(
 inject_css()
 
 PAGES = {
-    "🏠 首页 · 成果总览": home.render,
-    "🧰 订正工具（用你的数据）": tool.render,
+    "🏠 首页 · 误差会变吗": home.render,
+    "🔬 误差分析（可换数据）": tool.render,
     "📐 数据与方法": data_method.render,
     "📊 误差检验": verification.render,
     "🔍 核心发现：振幅阻尼": finding.render,
@@ -75,9 +75,15 @@ def main() -> None:
             index = max(0, min(index, len(PAGES) - 1))
     with st.sidebar:
         st.markdown("### 🌦 WeatherAgent")
-        st.caption("GFS 2 米气温预报误差的结构诊断")
+        st.caption("研究误差怎么变：用真实观测诊断 GFS 气温预报的误差结构")
+        if "goto" in st.session_state:
+            st.session_state["nav_choice"] = st.session_state.pop("goto")
         choice = st.radio(
-            "导航", list(PAGES), index=index, label_visibility="collapsed"
+            "导航",
+            list(PAGES),
+            key="nav_choice",
+            index=index,
+            label_visibility="collapsed",
         )
         st.divider()
         st.markdown(

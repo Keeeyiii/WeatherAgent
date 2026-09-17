@@ -152,6 +152,65 @@ def diagnose(clean: pd.DataFrame) -> dict:
     }
 
 
+def damping_evidence(clean: pd.DataFrame) -> pd.DataFrame:
+    """逐条给出"振幅阻尼"的四项证据，适用于任意数据集。
+
+    这四项与示例数据的分析完全一致，因此上传自己的数据也能得到同样的诊断：
+      ① 日变化尺度：预报的日较差是否小于观测
+      ② 强度响应：误差是否与观测距平成反比
+      ③ 极端时刻：最冷/最暖 1% 的偏差是否被放大
+      ④ 落点：压缩是否集中在最低气温那一侧
+    """
+    info = diagnose(clean)
+    error = clean["error"]
+    daily = clean.groupby(clean["time"].dt.normalize()).agg(
+        obs_max=("observed_temperature", "max"),
+        obs_min=("observed_temperature", "min"),
+        fcst_max=("forecast_temperature", "max"),
+        fcst_min=("forecast_temperature", "min"),
+    )
+    bias_min = float((daily["fcst_min"] - daily["obs_min"]).mean())
+    bias_max = float((daily["fcst_max"] - daily["obs_max"]).mean())
+
+    low = clean["observed_temperature"].quantile(0.01)
+    high = clean["observed_temperature"].quantile(0.99)
+    cold_error = float(error[clean["observed_temperature"] <= low].mean())
+    warm_error = float(error[clean["observed_temperature"] >= high].mean())
+
+    def verdict(ok: bool) -> str:
+        return "符合" if ok else "不符合"
+
+    return pd.DataFrame(
+        [
+            (
+                "① 日变化尺度",
+                "预报的日较差应小于观测",
+                f"{info['obs_range']:.2f} → {info['fcst_range']:.2f} ℃（比值 {info['range_ratio']:.2f}）",
+                verdict(info["range_ratio"] < 0.97),
+            ),
+            (
+                "② 强度响应",
+                "误差应与观测距平成反比",
+                f"斜率 {info['anomaly_slope']:+.3f}（r = {info['anomaly_corr']:+.2f}）",
+                verdict(info["anomaly_slope"] < -0.05),
+            ),
+            (
+                "③ 极端时刻",
+                "越极端偏差越大，且符号相反",
+                f"最冷 1% {cold_error:+.2f} ℃／最暖 1% {warm_error:+.2f} ℃",
+                verdict(cold_error > 0 and warm_error < 0),
+            ),
+            (
+                "④ 落在哪一侧",
+                "日最低气温的偏差应比日最高气温更偏正（两头向中间收）",
+                f"日最低气温偏差 {bias_min:+.2f} ℃／日最高 {bias_max:+.2f} ℃",
+                verdict((bias_min - bias_max) > 0.3),
+            ),
+        ],
+        columns=["检验角度", "如果存在振幅阻尼，应该看到", "数据里的结果", "判断"],
+    )
+
+
 # --------------------------------------------------------------------------- #
 # 订正方法：先 fit，再 apply
 # --------------------------------------------------------------------------- #
