@@ -22,6 +22,7 @@ from views import (
     finding,
     home,
     limits,
+    tool,
     verification,
 )
 from views.common import inject_css
@@ -36,6 +37,7 @@ inject_css()
 
 PAGES = {
     "🏠 首页 · 成果总览": home.render,
+    "🧰 订正工具（用你的数据）": tool.render,
     "📐 数据与方法": data_method.render,
     "📊 误差检验": verification.render,
     "🔍 核心发现：振幅阻尼": finding.render,
@@ -48,16 +50,24 @@ PAGES = {
 
 
 def main() -> None:
-    # 便于自动化检查：设置环境变量即可直接打开指定页面
+    # 页面选择优先级：环境变量（自动化检查用）→ URL 参数 ?page=… （可分享深链接）→ 默认首页
     forced = os.environ.get("WEATHERAGENT_PAGE")
     if forced in PAGES:
         index = list(PAGES).index(forced)
     else:
+        requested = None
         try:
-            index = int(os.environ.get("WEATHERAGENT_PAGE_INDEX", "0"))
-        except ValueError:
-            index = 0
-        index = max(0, min(index, len(PAGES) - 1))
+            requested = st.query_params.get("page")
+        except Exception:  # noqa: BLE001  （旧版 Streamlit 没有 query_params）
+            requested = None
+        if requested in PAGES:
+            index = list(PAGES).index(requested)
+        else:
+            try:
+                index = int(os.environ.get("WEATHERAGENT_PAGE_INDEX", "0"))
+            except ValueError:
+                index = 0
+            index = max(0, min(index, len(PAGES) - 1))
     with st.sidebar:
         st.markdown("### 🌦 WeatherAgent")
         st.caption("GFS 2 米气温预报误差的结构诊断")

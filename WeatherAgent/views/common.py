@@ -86,9 +86,13 @@ def cards(items: list[tuple[str, str]]) -> None:
         column.markdown(card(number, label), unsafe_allow_html=True)
 
 
-def hero(title: str, subtitle: str) -> None:
+def hero(title: str, subtitle: str, *, large: bool = False) -> None:
+    """页面顶部的标题块。`large=True` 用于首页，让标题更突出。"""
+    size = "font-size:2.45rem;" if large else ""
+    padding = "padding:1.75rem 1.8rem;" if large else ""
     st.markdown(
-        f'<div class="hero"><h1>{title}</h1><p>{subtitle}</p></div>',
+        f'<div class="hero" style="{padding}">'
+        f'<h1 style="{size}">{title}</h1><p>{subtitle}</p></div>',
         unsafe_allow_html=True,
     )
 

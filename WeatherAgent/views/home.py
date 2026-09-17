@@ -42,6 +42,7 @@ def render() -> None:
         f"以南京禄口站（ZSNJ）{head['n']:,} 小时真实观测为基准检验 GFS 2 米气温预报，"
         f"诊断误差的结构，并检验误差订正与资料同化各自能把误差降到多少。"
         f"数据时段 {head['start']:%Y-%m-%d} — {head['end']:%Y-%m-%d}。",
+        large=True,
     )
 
     st.markdown(
@@ -57,17 +58,17 @@ def render() -> None:
 
     # ------------------------------------------------------------------ 核心结论
     st.markdown(
-        f"""
-        <div class="hero" style="background:linear-gradient(105deg,#123a5f 0%,#2f7fb5 100%);
-             padding:1.35rem 1.7rem;">
-          <div style="font-size:0.86rem;color:#a9c6de;letter-spacing:.08em;">核 心 结 论</div>
-          <h1 style="font-size:1.75rem;margin:.25rem 0 .5rem 0;">
+        """
+        <div style="border:1px solid #dde7f0;border-left:5px solid #2f7fb5;
+                    border-radius:8px;padding:.85rem 1.05rem;background:#f8fbfd;">
+          <div style="font-size:.74rem;color:#8a95a0;letter-spacing:.14em;">核 心 结 论</div>
+          <div style="font-size:1.16rem;font-weight:700;color:#123a5f;margin:.28rem 0 .3rem 0;">
             误差的形态是「振幅阻尼」：模式把温度的起伏压平了
-          </h1>
-          <p style="font-size:1.02rem;color:#eaf3fa;line-height:1.75;">
-            模式并不是简单地整体偏暖或偏冷，而是<b>该冷的时候不够冷、该热的时候不够热</b>，
-            越极端越明显。压缩有一个明确的落点：<b>冬季夜间的最低气温</b>。
-          </p>
+          </div>
+          <div style="font-size:.93rem;color:#33475b;line-height:1.72;">
+            不是整体偏暖或偏冷，而是<b>该冷的时候不够冷、该热的时候不够热</b>，越极端越明显；
+            压缩有明确的落点：<b>冬季夜间的最低气温</b>。
+          </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -200,9 +201,13 @@ def render() -> None:
     # ------------------------------------------------------------------ 目录
     st.divider()
     st.subheader("这个应用包含什么")
-    st.caption("左侧边栏切换页面。逻辑顺序：数据 → 检验 → 诊断 → 订正 → 同化 → 案例 → 局限。")
+    st.caption(
+        "左侧边栏切换页面。「订正工具」是能直接用的工具，"
+        "其余页面是围绕南京这一个数据集做的完整研究，顺序为：数据 → 检验 → 诊断 → 订正 → 同化 → 案例 → 局限。"
+    )
 
     pages = [
+        ("🧰 订正工具（用你的数据）", "上传你自己的“预报—观测”数据：自动质检、诊断、比较订正方法，并导出订正后的 CSV"),
         ("📐 数据与方法", "数据来源、指标定义，以及为什么必须用严格时序划分而不是随机划分"),
         ("📊 误差检验", "从总体、季节、日变化、预报时效四个角度给误差画一张画像"),
         ("🔍 核心发现：振幅阻尼", "先定义概念、再列出判据，然后用四组独立证据逐条对照"),

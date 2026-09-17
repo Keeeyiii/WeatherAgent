@@ -1,3 +1,7 @@
+# 仓库根目录的依赖声明。
+#
+# Streamlit Community Cloud 默认在**仓库根目录**查找 requirements.txt，
+# 而应用入口是 WeatherAgent/app.py。为稳妥起见，两处各放一份相同内容。
 pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
