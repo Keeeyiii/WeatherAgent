@@ -74,7 +74,7 @@ def render() -> None:
     fig.update_layout(title="各方法 MAE（误差棒为三折标准差）")
     fig.update_yaxes(title="MAE (℃)", range=[0, summary["MAE_mean"].max() * 1.16])
     fig.update_xaxes(tickangle=-15)
-    st.plotly_chart(base_layout(fig, 400), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 400), width="stretch")
 
     table = summary[
         [
@@ -100,7 +100,7 @@ def render() -> None:
     table["本层新增改善 %"] = table["本层新增改善 %"].apply(
         lambda value: "—" if pd.isna(value) else f"{value:+.1f}"
     )
-    st.dataframe(table, use_container_width=True, hide_index=True)
+    st.dataframe(table, width="stretch", hide_index=True)
 
     st.markdown(
         f"""
@@ -140,7 +140,7 @@ def render() -> None:
     fig.update_layout(title="随机森林特征重要性")
     fig.update_xaxes(title="重要性")
     fig.update_yaxes(autorange="reversed")
-    st.plotly_chart(base_layout(fig, 320), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 320), width="stretch")
     caption(
         "预报温度本身最重要（0.29），其次是风速（0.20）和湿度（0.16）——"
         "这两个量都与边界层湍流交换和地面能量收支密切相关，"
@@ -151,7 +151,7 @@ def render() -> None:
     st.subheader("逐折明细：结论是否只由某一折撑着？")
     pivot = results.pivot_table(index="method", columns="fold", values="MAE").round(3)
     pivot.columns = [f"第 {int(column)} 折" for column in pivot.columns]
-    st.dataframe(pivot, use_container_width=True)
+    st.dataframe(pivot, width="stretch")
     caption(
         "三折中，(月×小时)去偏与随机森林都稳定优于原始预报；"
         "第 1 折增益最小，第 2、3 折增益最大 —— 这与“压缩集中在冷季节”的诊断一致。"
@@ -169,7 +169,7 @@ def render() -> None:
         ["method", "MAE", "bias", "MAE_improvement_pct", "RMSE_improvement_pct"]
     ].copy()
     display.columns = ["方法", "上海 MAE", "上海 bias", "相对上海原始改善 %", "RMSE 改善 %"]
-    st.dataframe(display.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(display.round(3), width="stretch", hide_index=True)
 
     forest_cross = cross.loc[cross["method"].str.contains("随机森林", regex=False)].iloc[0]
     st.error(
@@ -189,7 +189,7 @@ def render() -> None:
     fig.update_layout(title="预报误差的时间自相关")
     fig.update_xaxes(title="滞后（小时）", dtick=1)
     fig.update_yaxes(title="自相关系数")
-    st.plotly_chart(base_layout(fig, 300), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 300), width="stretch")
     caption(
         f"滞后 1 小时的自相关高达 {autocorr['autocorr'].iloc[0]:.2f}，"
         f"12 小时后仍有 {autocorr['autocorr'].iloc[-1]:.2f}。"

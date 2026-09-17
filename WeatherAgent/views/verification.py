@@ -66,7 +66,7 @@ def render() -> None:
     high = max(0.0, float(season["bias"].max()))
     span = high - low
     fig.update_yaxes(title="bias (℃)", range=[low - 0.18 * span, high + 0.22 * span])
-    st.plotly_chart(base_layout(fig, 330), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 330), width="stretch")
     winter = season.loc[season["season"] == "冬季 DJF", "bias"].iloc[0]
     summer = season.loc[season["season"] == "夏季 JJA", "bias"].iloc[0]
     caption(
@@ -90,7 +90,7 @@ def render() -> None:
     fig.update_layout(title="各月 RMSE 与 bias")
     fig.update_xaxes(dtick=1, title="月份")
     fig.update_yaxes(title="℃")
-    st.plotly_chart(base_layout(fig, 350), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 350), width="stretch")
     jan = month.loc[month["month"] == 1].iloc[0]
     aug = month.loc[month["month"] == 8].iloc[0]
     caption(
@@ -114,7 +114,7 @@ def render() -> None:
     fig.update_layout(title="按北京时小时的误差日变化")
     fig.update_xaxes(dtick=2, title="北京时")
     fig.update_yaxes(title="℃")
-    st.plotly_chart(base_layout(fig, 350), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 350), width="stretch")
     caption(
         "偏差从清晨的 +0.52 ℃ 下降到傍晚的 −0.92 ℃，跨度约 1.4 ℃。"
         "**模式对温度日变化的还原存在系统性的形状偏差**，"
@@ -151,7 +151,7 @@ def render() -> None:
     fig.update_layout(title="误差随预报时效的增长")
     fig.update_xaxes(title="预报时效（天）", dtick=1)
     fig.update_yaxes(title="℃")
-    st.plotly_chart(base_layout(fig, 350), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 350), width="stretch")
     growth = lead_score["RMSE"].iloc[-1] / lead_score["RMSE"].iloc[0]
     caption(
         f"RMSE 从 1 天的 {lead_score['RMSE'].iloc[0]:.2f} ℃ 增长到 7 天的 "
@@ -164,10 +164,10 @@ def render() -> None:
 
     with st.expander("查看完整数据表"):
         st.markdown("**按季节**")
-        st.dataframe(season.round(3), use_container_width=True, hide_index=True)
+        st.dataframe(season.round(3), width="stretch", hide_index=True)
         st.markdown("**按月份**")
-        st.dataframe(month.round(3), use_container_width=True, hide_index=True)
+        st.dataframe(month.round(3), width="stretch", hide_index=True)
         st.markdown("**按北京时小时**")
-        st.dataframe(hour.round(3), use_container_width=True, hide_index=True)
+        st.dataframe(hour.round(3), width="stretch", hide_index=True)
         st.markdown("**按预报时效**")
-        st.dataframe(lead_score.round(3), use_container_width=True, hide_index=True)
+        st.dataframe(lead_score.round(3), width="stretch", hide_index=True)

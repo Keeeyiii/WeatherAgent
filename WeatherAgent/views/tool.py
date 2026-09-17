@@ -141,7 +141,7 @@ def render() -> None:
 
     st.subheader("第二步：数据质检")
     report = quality_report(raw, clean)
-    st.dataframe(report, use_container_width=True, hide_index=True)
+    st.dataframe(report, width="stretch", hide_index=True)
     warnings = report[report["判断"].str.contains("异常|请确认|疑似", na=False)]
     if len(warnings):
         st.warning(
@@ -165,7 +165,7 @@ def render() -> None:
         column.markdown(card(number, label), unsafe_allow_html=True)
     st.write("")
 
-    st.plotly_chart(_bias_chart(clean), use_container_width=True)
+    st.plotly_chart(_bias_chart(clean), width="stretch")
 
     damping_ratio = info["range_ratio"]
     damping_slope = info["anomaly_slope"]
@@ -222,11 +222,11 @@ def render() -> None:
     figure.update_layout(title="各方法在你数据上的 MAE（越低越好，橙色为最佳）")
     figure.update_yaxes(title="MAE (℃)", range=[0, max(raw_mae * 1.15, summary["MAE"].max() * 1.15)])
     figure.update_xaxes(tickangle=-12)
-    st.plotly_chart(base_layout(figure, 400), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 400), width="stretch")
 
     table = summary.copy()
     table.columns = ["方法", "MAE", "MAE 折间标准差", "RMSE", "bias", "相对不订正改善 %"]
-    st.dataframe(table.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(table.round(3), width="stretch", hide_index=True)
 
     if best["method"].startswith("①"):
         st.warning(
@@ -254,7 +254,7 @@ def render() -> None:
     with st.expander("逐折明细（检查结论是否只由某一折撑着）"):
         pivot = results.pivot_table(index="method", columns="fold", values="MAE").round(3)
         pivot.columns = [f"第 {int(c)} 折" for c in pivot.columns]
-        st.dataframe(pivot, use_container_width=True)
+        st.dataframe(pivot, width="stretch")
 
     # ------------------------------------------------------------ 输出
     st.subheader("第五步：拿走结果")
@@ -288,7 +288,7 @@ def render() -> None:
                 "correction",
             ]
         ].head(50)
-        st.dataframe(preview.round(2), use_container_width=True, hide_index=True)
+        st.dataframe(preview.round(2), width="stretch", hide_index=True)
         st.download_button(
             "⬇ 下载订正后的数据（CSV）",
             data=corrected.to_csv(index=False).encode("utf-8-sig"),
@@ -340,7 +340,7 @@ def render() -> None:
                             output[["time", "forecast_temperature", "corrected_temperature", "correction"]]
                             .head(50)
                             .round(2),
-                            use_container_width=True,
+                            width="stretch",
                             hide_index=True,
                         )
                         st.download_button(

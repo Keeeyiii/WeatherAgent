@@ -101,12 +101,12 @@ def render() -> None:
         ],
         columns=["方法", "新引入的误差结构", "这一层要回答什么问题"],
     )
-    st.dataframe(design, use_container_width=True, hide_index=True)
+    st.dataframe(design, width="stretch", hide_index=True)
 
     st.info(
         "这个设计的价值在于：如果随机森林的改善完全来自它“顺带”消除的系统性结构，"
         "那么当基线已经包含这些结构时，随机森林的增量就应该很小。"
-        "这是一个可以被数据推翻的判断——结果见「订正实验」页。"
+        "这是一个可以被数据推翻的判断——结果见「🧪 订正实验」页。"
     )
 
     st.subheader("5. 复现方式")

@@ -183,11 +183,11 @@ def render() -> None:
     figure.update_layout(title="三种方法的 RMSE（越低越好）")
     figure.update_yaxes(title="RMSE (℃)", range=[0, background_rmse * 1.12])
     figure.update_xaxes(tickangle=-8)
-    st.plotly_chart(base_layout(figure, 380), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 380), width="stretch")
 
     display = table.copy()
     display.columns = ["方法", "样本数", "bias (℃)", "MAE (℃)", "RMSE (℃)", "相对背景场改善 %"]
-    st.dataframe(display.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(display.round(3), width="stretch", hide_index=True)
 
     st.markdown(
         f"""
@@ -224,7 +224,7 @@ def render() -> None:
         )
     )
     figure.update_layout(title="站点之间观测新息（观测 − 背景场）的相关系数")
-    st.plotly_chart(base_layout(figure, 420), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 420), width="stretch")
     caption(
         "任意两站之间的相关系数都在 **0.33—0.56** 之间且全部为正："
         "模式在某站偏高时，邻近站点往往也偏高。"
@@ -273,7 +273,7 @@ def render() -> None:
             textfont=dict(size=10),
             showlegend=False,
         )
-        st.plotly_chart(base_layout(figure, 400), use_container_width=True)
+        st.plotly_chart(base_layout(figure, 400), width="stretch")
     with right:
         figure = _heatmap(
             analysis,
@@ -288,7 +288,7 @@ def render() -> None:
             marker=dict(size=9, color="black", symbol="x"),
             showlegend=False,
         )
-        st.plotly_chart(base_layout(figure, 400), use_container_width=True)
+        st.plotly_chart(base_layout(figure, 400), width="stretch")
     caption(
         "黑色叉号是观测所在位置，其旁标注的数字是**该站的观测新息**（观测 − 背景场，℃）。"
         "左图是模式原始温度场，右图是融合观测后的分析场。"
@@ -298,7 +298,7 @@ def render() -> None:
     limit = float(np.nanmax(np.abs(analysis["increment"])))
     figure = _heatmap(analysis, "increment", "OI 对背景场做了多大的调整", zmid=0)
     figure.update_traces(zmin=-limit, zmax=limit)
-    st.plotly_chart(base_layout(figure, 400), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 400), width="stretch")
     caption(
         "增量在站点附近最大，并随距离按高斯相关函数衰减。"
         f"该时刻的最大调整量约 **{limit:.1f} ℃**，"
@@ -344,7 +344,7 @@ def render() -> None:
     figure.update_layout(title="分析误差随相关长度与观测误差的变化")
     figure.update_xaxes(title="相关长度 L (km)")
     figure.update_yaxes(title="留一站检验 RMSE (℃)")
-    st.plotly_chart(base_layout(figure, 400), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 400), width="stretch")
 
     best = sweep_table.loc[sweep_table["RMSE"].idxmin()]
     caption(

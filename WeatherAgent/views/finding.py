@@ -59,7 +59,7 @@ def render() -> None:
 
     concept = os.path.join(FIGURES, "fig11_damping_concept.png")
     if os.path.exists(concept):
-        st.image(concept, use_container_width=True)
+        st.image(concept, width="stretch")
     caption(
         "2024 年 12 月 2 日起的三天。观测的峰值 22 ℃ 被预报压到约 19.7 ℃，"
         "观测的谷值 7 ℃ 被预报抬到约 10 ℃——**该高时不够高，该低时不够低**。"
@@ -108,7 +108,7 @@ def render() -> None:
         ],
         columns=["检验角度", "如果“振幅阻尼”成立，应该看到", "数据里的结果", "判断"],
     )
-    st.dataframe(predictions, use_container_width=True, hide_index=True)
+    st.dataframe(predictions, width="stretch", hide_index=True)
     st.caption("四条全部成立，而且在后面的稳健性检验中还排除了“采样造成的假象”。")
 
     st.divider()
@@ -140,7 +140,7 @@ def render() -> None:
     figure.update_layout(title="逐月平均日较差（日最高 − 日最低）")
     figure.update_xaxes(dtick=1, title="月份")
     figure.update_yaxes(title="日较差 (℃)")
-    st.plotly_chart(base_layout(figure, 340), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 340), width="stretch")
     st.markdown(
         f"""
         **结果**：全年平均日较差观测 {rng['obs_range']:.2f} ℃、预报 {rng['fcst_range']:.2f} ℃，
@@ -187,7 +187,7 @@ def render() -> None:
     high = max(0.0, float(bins["mean_error"].max()))
     span = high - low
     figure.update_yaxes(title="平均误差 (℃)", range=[low - 0.22 * span, high + 0.26 * span])
-    st.plotly_chart(base_layout(figure, 360), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 360), width="stretch")
     st.markdown(
         f"""
         **结果**：关系几乎单调。观测比常年冷约 9 ℃ 时，模式平均偏暖 +0.93 ℃；
@@ -225,8 +225,8 @@ def render() -> None:
     high = max(0.0, float(extremes["平均误差 (℃)"].max()))
     span = high - low
     figure.update_yaxes(title="平均误差 (℃)", range=[low - 0.18 * span, high + 0.22 * span])
-    st.plotly_chart(base_layout(figure, 330), use_container_width=True)
-    st.dataframe(extremes.round(2), use_container_width=True, hide_index=True)
+    st.plotly_chart(base_layout(figure, 330), width="stretch")
+    st.dataframe(extremes.round(2), width="stretch", hide_index=True)
     st.markdown(
         f"""
         **结果**：全样本平均偏差只有 {signed(float(extremes.loc[1, '平均误差 (℃)']))}，
@@ -264,7 +264,7 @@ def render() -> None:
     figure.update_layout(title="逐月的日最低 / 日最高气温偏差")
     figure.update_xaxes(dtick=1, title="月份")
     figure.update_yaxes(title="偏差 (℃)")
-    st.plotly_chart(base_layout(figure, 340), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 340), width="stretch")
     columns = st.columns(3)
     for column, (number, label) in zip(
         columns,
@@ -316,7 +316,7 @@ def render() -> None:
         unsafe_allow_html=True,
     )
     st.write("")
-    st.dataframe(resolution.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(resolution.round(3), width="stretch", hide_index=True)
     st.markdown(
         f"""
         **两步检查的结果**：
