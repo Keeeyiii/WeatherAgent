@@ -147,6 +147,7 @@ def render() -> None:
     source = st.radio(
         "数据来源",
         ["用内置示例数据（南京禄口 ZSNJ + GFS，23,543 小时）", "上传我自己的数据"],
+        index=1 if st.session_state.get("user_csv") is not None else 0,
         horizontal=True,
         label_visibility="collapsed",
     )
@@ -157,6 +158,7 @@ def render() -> None:
             uploaded = st.file_uploader(
                 "上传 CSV",
                 type=["csv"],
+                key="user_csv",
                 help="必须包含 time、forecast_temperature、observed_temperature；"
                 "humidity、pressure、wind_speed 可选。",
             )

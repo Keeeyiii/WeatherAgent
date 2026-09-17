@@ -78,13 +78,27 @@ def render() -> None:
         column.markdown(card(number, label), unsafe_allow_html=True)
     st.write("")
 
-    # ---------------------------------------------------------------- 怎么用
-    st.subheader("怎么用这个网站")
-    st.markdown(
-        "- **直接浏览**：内置南京站 2.4 年真实数据，从左侧导航进入各分析页。\n"
-        "- **换自己的数据**：进入「🔬 误差分析（可换数据）」页上传观测-预报 CSV，"
-        "即可走完同一条分析链。"
+    # ---------------------------------------------------------------- 开始分析
+    st.subheader("开始分析：选一份数据")
+    uploaded = st.file_uploader(
+        "上传我的数据（CSV）",
+        type=["csv"],
+        key="user_csv",
+        help="必需列：time、forecast_temperature、observed_temperature；"
+        "可选列：humidity、pressure、wind_speed。"
+        "格式模板与完整说明见「🔬 误差分析（可换数据）」页。",
     )
+    if uploaded is None:
+        st.markdown(
+            "- **不上传**：直接用内置的南京站 2.4 年真实数据，从左侧导航进入各分析页。\n"
+            "- **上传后**：进入「🔬 误差分析（可换数据）」页，"
+            "同一条分析链会自动跑在你的数据上。"
+        )
+    else:
+        st.success(
+            f"已收到 {uploaded.name}。"
+            "请从左侧进入「🔬 误差分析（可换数据）」页查看完整分析。"
+        )
     st.write("")
 
     # ---------------------------------------------------------------- 成果速览
