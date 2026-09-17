@@ -22,6 +22,7 @@ from openai import OpenAI
 from tools.data_checker import check_data
 from tools.forecast_evaluator import evaluate_forecast
 from tools.ml_correction import machine_learning_correction
+from tools.oi_correction import optimal_interpolation_correction
 
 # 加载项目根目录下的 .env（若存在）
 load_dotenv()
@@ -48,6 +49,7 @@ SYSTEM_PROMPT = """
 9. 如果订正结果改善了误差，要说明这是「在当前测试数据上」的结果。
 10. 如果订正结果没有改善，也必须如实说明，不要掩盖。
 11. 机器学习订正结果来自滚动窗口交叉验证：报告整体水平时使用「均值 ± 标准差」格式，并可结合各折结果说明订正效果在不同时间段上的稳定性。
+12. 简化最优插值（OI）订正是资料同化经典方法（最优插值）的单变量、标量权重简化演示：解释其结果时不要把它描述成真实的资料同化（3D-Var/EnKF 处理高维空间场，远比此复杂）。
 
 当你需要任何数值时，必须调用对应的 Python 工具获取真实结果，而不是自己计算。
 """
@@ -75,6 +77,14 @@ TOOLS = [
         "function": {
             "name": "ml_correction",
             "description": "运行随机森林预报订正（滚动窗口交叉验证），返回每一折的订正前后 MAE/RMSE/Bias、整体均值与标准差、MAE/RMSE 改善率（各折均值）和平均特征重要性。",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "oi_correction",
+            "description": "运行简化最优插值（OI）误差订正（滚动窗口交叉验证，与随机森林使用完全相同的划分），返回每一折的背景场误差方差 sigma_b^2、OI 权重 w、新息、订正前后 MAE/RMSE/Bias，以及整体均值与标准差和改善率。",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -178,6 +188,49 @@ class WeatherAgent:
             ),
         }
 
+    def _tool_oi_correction(self):
+        """运行简化最优插值（OI）订正，返回各折与整体汇总指标。"""
+        result = optimal_interpolation_correction(self.df)
+
+        folds = [
+            {
+                "fold": f["fold"],
+                "test_period": f"{f['test_start']} ~ {f['test_end']}",
+                "train_samples": f["train_size"],
+                "test_samples": f["test_size"],
+                "sigma_b_squared": round(f["sigma_b_squared"], 4),
+                "weight": round(f["weight"], 4),
+                "innovation": round(f["innovation"], 4),
+                "raw_mae": round(f["raw"]["MAE"], 4),
+                "raw_rmse": round(f["raw"]["RMSE"], 4),
+                "raw_bias": round(f["raw"]["Bias"], 4),
+                "oi_mae": round(f["oi"]["MAE"], 4),
+                "oi_rmse": round(f["oi"]["RMSE"], 4),
+                "oi_bias": round(f["oi"]["Bias"], 4),
+                "mae_improvement_percent": round(f["mae_improve_percent"], 2),
+            }
+            for f in result["folds"]
+        ]
+
+        return {
+            "method": "rolling_window_cv_oi（简化最优插值 OI，滚动窗口交叉验证）",
+            "n_splits": result["n_splits"],
+            "sigma_o_squared": result["sigma_o_squared"],
+            "folds": folds,
+            "raw_mean": {k: round(v, 4) for k, v in result["raw_mean"].items()},
+            "raw_std": {k: round(v, 4) for k, v in result["raw_std"].items()},
+            "oi_mean": {k: round(v, 4) for k, v in result["oi_mean"].items()},
+            "oi_std": {k: round(v, 4) for k, v in result["oi_std"].items()},
+            "mae_improvement_mean_percent": round(result["mae_improve_mean"], 2),
+            "rmse_improvement_mean_percent": round(result["rmse_improve_mean"], 2),
+            "note": (
+                "简化 OI 是资料同化经典方法（最优插值）的单变量、标量权重演示版："
+                "权重 w = sigma_b^2 / (sigma_b^2 + sigma_o^2)，"
+                "分析值 = 预报 + w * 新息；真实的资料同化（3D-Var/EnKF）"
+                "处理高维空间场，远比此复杂。"
+            ),
+        }
+
     def _run_tool(self, name):
         """根据工具名执行对应 Python 工具，并捕获异常。"""
         try:
@@ -187,6 +240,8 @@ class WeatherAgent:
                 return self._tool_evaluate_forecast()
             if name == "ml_correction":
                 return self._tool_ml_correction()
+            if name == "oi_correction":
+                return self._tool_oi_correction()
             return {"error": f"未知工具：{name}"}
         except Exception as exc:  # 工具失败也返回结构化错误，不让页面崩溃
             return {"error": f"工具 {name} 执行失败：{exc}"}
