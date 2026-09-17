@@ -17,6 +17,7 @@ from agent.weather_agent import WeatherAgent
 from tools.data_checker import check_data
 from tools.forecast_evaluator import evaluate_forecast
 from tools.ml_correction import baseline_comparison, machine_learning_correction
+from tools.oi_correction import optimal_interpolation_correction
 
 # Streamlit Cloud 部署兼容：若在 Secrets 中配置了 Key，则写入环境变量供 Agent 读取。
 # 注意：本地未配置 secrets.toml 时，访问 st.secrets 会抛异常，需捕获后忽略
@@ -64,7 +65,8 @@ st.markdown(
     5. 订正前后效果对比
     6. 基线对比实验（常数去偏 / 按小时去偏）
     7. 特征重要性分析
-    8. DeepSeek AI 气象分析 Agent
+    8. 简化最优插值（OI）实验
+    9. DeepSeek AI 气象分析 Agent
     """
 )
 
@@ -415,6 +417,9 @@ if st.session_state.get("ml_done", False):
         with st.spinner("正在进行基线对比实验（与随机森林相同的划分）……"):
             baseline_result = baseline_comparison(df)
 
+        # 存入 session_state，供 ⑧ OI 实验板块并列对比使用
+        st.session_state["baseline_result"] = baseline_result
+
         # 四种方法在同一测试集上的对比表（各折均值）
         methods_summary = [
             ("原始预报", baseline_result["raw_mean"]),
@@ -619,9 +624,152 @@ if st.session_state.get("ml_done", False):
             "不能直接代表模型在其他时间、地点或天气条件下的实际预报能力。"
         )
 
-# ---------------- ⑧ AI 气象预报分析 Agent ----------------
+    st.markdown("---")
+
+    # ---------------- ⑧ 简化最优插值（OI）实验 ----------------
+    st.header("⑧ 简化最优插值（OI）实验")
+    st.markdown(
+        """
+        **最优插值（Optimal Interpolation, OI）是资料同化中最经典的分析方法**：
+        给定背景场（预报值）与观测，按两者误差方差之比分配权重，
+        使分析值（订正结果）的误差方差最小。
+
+        本模块是其**单变量、标量权重**的简化演示：
+
+        - 背景场误差方差 `sigma_b²`：训练集上 `forecast - observed` 的方差
+        - 观测误差方差 `sigma_o²`：固定为 0.3，代表观测自身的不确定性
+        - OI 权重 `w = sigma_b² / (sigma_b² + sigma_o²)`
+        - 虚拟观测新息 = 训练集上 `observed − forecast` 的均值
+          （等于平均偏差 Bias 取反；新息为负表示预报系统性偏高）
+        - 分析值 `analysis = forecast + w × 新息`
+          （以训练集的平均系统偏差作为「虚拟观测新息」做订正）
+
+        后处理与资料同化在方法论上**同根同源**——都是用历史统计信息对预报
+        做最优加权订正；区别在于真实资料同化（3D-Var、EnKF 等）处理的是
+        **高维空间场**的误差协方差结构，比这里的标量演示复杂得多。
+
+        验证方式与随机森林、基线实验完全相同（同一滚动窗口划分、同一测试集）。
+        """
+    )
+
+    ml_result = st.session_state.get("ml_result")
+    baseline_result = st.session_state.get("baseline_result")
+    if ml_result is None or baseline_result is None:
+        st.info("请先完成机器学习订正。")
+    else:
+        with st.spinner("正在进行简化最优插值（OI）实验……"):
+            oi_result = optimal_interpolation_correction(df)
+
+        st.session_state["oi_result"] = oi_result
+
+        st.success(
+            f"验证完成：共 {oi_result['n_splits']} 折，"
+            f"每折测试 {oi_result['test_len_per_fold']} 条"
+            f"（观测误差方差 sigma_o² = {oi_result['sigma_o_squared']}）。"
+        )
+
+        # 每一折的 OI 权重与检验结果
+        st.subheader(f"每一折的 OI 权重与检验结果（共 {oi_result['n_splits']} 折）")
+        oi_folds_df = pd.DataFrame(
+            [
+                {
+                    "折": f["fold"],
+                    "训练样本": f["train_size"],
+                    "测试样本": f["test_size"],
+                    "sigma_b²": round(f["sigma_b_squared"], 3),
+                    "权重 w": round(f["weight"], 3),
+                    "新息 (观测−预报)": round(f["innovation"], 3),
+                    "原始 MAE": round(f["raw"]["MAE"], 3),
+                    "OI MAE": round(f["oi"]["MAE"], 3),
+                    "原始 Bias": round(f["raw"]["Bias"], 3),
+                    "OI Bias": round(f["oi"]["Bias"], 3),
+                }
+                for f in oi_result["folds"]
+            ]
+        )
+        st.dataframe(oi_folds_df.set_index("折"))
+
+        # 五种方法在同一测试集上的对比表（各折均值）
+        st.subheader("与 Random Forest、基线方法并列对比（各折均值，同一测试集）")
+        methods_summary = [
+            ("原始预报", baseline_result["raw_mean"]),
+            ("基线A（常数去偏）", baseline_result["baseline_a_mean"]),
+            ("基线B（按小时去偏）", baseline_result["baseline_b_mean"]),
+            ("Random Forest 订正", ml_result["corrected_mean"]),
+            ("简化 OI 订正", oi_result["oi_mean"]),
+        ]
+        compare_df = pd.DataFrame(
+            [
+                {
+                    "方法": name,
+                    "MAE (°C)": round(m["MAE"], 3),
+                    "RMSE (°C)": round(m["RMSE"], 3),
+                    "Bias (°C)": round(m["Bias"], 3),
+                }
+                for name, m in methods_summary
+            ]
+        ).set_index("方法")
+        st.dataframe(compare_df)
+        st.caption(
+            "各数值为滚动窗口交叉验证各折测试段的均值；"
+            "五种方法使用完全相同的训练/测试划分，可直接对比。"
+        )
+
+        # 分组柱状图：五种方法的 MAE 与 RMSE 对比
+        method_names = [name for name, _ in methods_summary]
+        fig_oi = go.Figure()
+        fig_oi.add_trace(
+            go.Bar(
+                x=method_names,
+                y=[m["MAE"] for _, m in methods_summary],
+                name="MAE",
+            )
+        )
+        fig_oi.add_trace(
+            go.Bar(
+                x=method_names,
+                y=[m["RMSE"] for _, m in methods_summary],
+                name="RMSE",
+            )
+        )
+        fig_oi.update_layout(
+            title="五种方法误差对比（各折均值）",
+            xaxis_title="方法",
+            yaxis_title="误差 (°C)",
+            barmode="group",
+            legend_title="指标",
+            height=400,
+        )
+        st.plotly_chart(fig_oi, width="stretch")
+
+        # 结果讨论（依据真实计算结果自动生成）
+        oi_mae = oi_result["oi_mean"]["MAE"]
+        raw_mae = baseline_result["raw_mean"]["MAE"]
+        base_a_mae = baseline_result["baseline_a_mean"]["MAE"]
+        base_b_mae = baseline_result["baseline_b_mean"]["MAE"]
+        rf_mae = ml_result["corrected_mean"]["MAE"]
+        w_mean = sum(f["weight"] for f in oi_result["folds"]) / len(
+            oi_result["folds"]
+        )
+
+        st.info(
+            f"**结果讨论**：简化 OI 的各折平均 MAE 为 {oi_mae:.3f} °C"
+            f"（原始预报 {raw_mae:.3f}、基线A {base_a_mae:.3f}、"
+            f"基线B {base_b_mae:.3f}、Random Forest {rf_mae:.3f}）。\n\n"
+            f"简化 OI 只用**单一标量权重**（各折平均 w ≈ {w_mean:.2f}）"
+            f"订正整体系统偏差，等价于按方差比「打折扣」的常数去偏："
+            f"它通常与基线A 效果相当，但无法刻画日变化等结构化偏差，"
+            f"因此不及能利用小时信息的基线B 与随机森林。\n\n"
+            f"**方法论意义**：本实验展示了统计后处理与资料同化的共同根源——"
+            f"都是基于误差统计对预报做最优加权订正；"
+            f"真实的资料同化（3D-Var、EnKF 等）把这一思想推广到高维空间场，"
+            f"用误差协方差矩阵描述背景场与观测的不确定性，"
+            f"远比此处的标量演示复杂。"
+        )
+
+# ---------------- ⑨ AI 气象预报分析 Agent ----------------
 st.markdown("---")
-st.header("⑧ AI 气象预报分析 Agent")
+st.header("⑨ AI 气象预报分析 Agent")
 
 st.markdown(
     """
