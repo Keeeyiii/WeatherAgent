@@ -60,9 +60,14 @@ def main() -> None:
             requested = st.query_params.get("page")
         except Exception:  # noqa: BLE001  （旧版 Streamlit 没有 query_params）
             requested = None
-        if requested in PAGES:
-            index = list(PAGES).index(requested)
-        else:
+        index = None
+        if requested:
+            # 允许用简称（如 "数据与方法"），不必带上页面名里的 emoji
+            for position, name in enumerate(PAGES):
+                if requested == name or requested in name:
+                    index = position
+                    break
+        if index is None:
             try:
                 index = int(os.environ.get("WEATHERAGENT_PAGE_INDEX", "0"))
             except ValueError:
