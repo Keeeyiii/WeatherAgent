@@ -53,7 +53,7 @@ def render() -> None:
     )
     st.markdown(
         f"""
-        - 符号约定与原始 WeatherAgent 一致：**error > 0 表示模式预报偏高（偏暖）**。
+        - 符号约定：**error > 0 表示预报偏高（偏暖），error < 0 表示预报偏低（偏冷）**。
         - **bias** 是带符号的平均误差，正负可以相互抵消；**MAE / RMSE** 反映误差量级，不抵消。
         - 正因为两种指标的性质不同，本项目第一步发现的落差就很有信息量：
           **平均偏差只有 {head['bias']:+.2f} ℃，MAE 却高达 {head['mae']:.2f} ℃。**
@@ -101,12 +101,12 @@ def render() -> None:
         ],
         columns=["方法", "新引入的误差结构", "这一层要回答什么问题"],
     )
-    st.dataframe(design, use_container_width=True, hide_index=True)
+    st.dataframe(design, width="stretch", hide_index=True)
 
     st.info(
         "这个设计的价值在于：如果随机森林的改善完全来自它“顺带”消除的系统性结构，"
         "那么当基线已经包含这些结构时，随机森林的增量就应该很小。"
-        "这是一个可以被数据推翻的判断——第 5 页给出结果。"
+        "这是一个可以被数据推翻的判断——「🧪 订正实验」页给出结果。"
     )
 
     st.subheader("5. 复现方式")

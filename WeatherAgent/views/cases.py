@@ -102,7 +102,7 @@ def _render_case(name: str, start: str, end: str) -> None:
     )
     fig.update_layout(title=f"{name}：观测 / 预报 / 订正后")
     fig.update_yaxes(title="2 米气温 (℃)")
-    st.plotly_chart(base_layout(fig, 420), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 420), width="stretch")
     caption(
         f"订正模型只使用 {start} 之前的数据训练，因此这是严格的样本外检验——"
         "模型在“看到”这次天气过程之前就已经定好了参数。"
@@ -127,11 +127,11 @@ def _render_case(name: str, start: str, end: str) -> None:
     fig.add_hline(y=0, line=dict(color=C_NAVY, width=1))
     fig.update_layout(title="误差演变（正 = 模式偏暖）")
     fig.update_yaxes(title="误差 (℃)")
-    st.plotly_chart(base_layout(fig, 320), use_container_width=True)
+    st.plotly_chart(base_layout(fig, 320), width="stretch")
 
     display = summary.copy()
     display.columns = ["方法", "bias (℃)", "MAE (℃)", "RMSE (℃)", "最大绝对误差 (℃)"]
-    st.dataframe(display.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(display.round(3), width="stretch", hide_index=True)
 
     direction = (
         f"寒潮降温阶段，模式明显偏暖（bias {raw['bias']:+.2f} ℃）"

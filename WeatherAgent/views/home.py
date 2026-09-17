@@ -66,7 +66,7 @@ def render() -> None:
           </h1>
           <p style="font-size:1.02rem;color:#eaf3fa;line-height:1.75;">
             模式并不是简单地整体偏暖或偏冷，而是<b>该冷的时候不够冷、该热的时候不够热</b>，
-            越极端越明显。压缩有一个明确的落点：<b>冬季夜间的最低气温</b>。
+            越极端越明显。偏差有一个明确的落点：<b>冬季夜间的最低气温</b>。
           </p>
         </div>
         """,
@@ -91,10 +91,10 @@ def render() -> None:
     st.subheader("一眼看懂：什么叫被压平")
     concept = os.path.join(FIGURES, "fig11_damping_concept.png")
     if os.path.exists(concept):
-        st.image(concept, use_container_width=True)
+        st.image(concept, width="stretch")
     caption(
-        "2024 年 12 月 2 日起三天。观测峰值 22 ℃ 被预报压到约 19.7 ℃，"
-        "观测谷值 7 ℃ 被预报抬到约 10 ℃——**该高的时候不够高，该低的时候不够低**。"
+        "2024 年 12 月 2 日起三天。观测峰值为 22 ℃，预报只给到约 19.7 ℃；"
+        "观测谷值 7 ℃，预报却抬到约 10 ℃——**该高的时候不够高，该低的时候不够低**。"
     )
 
     # ------------------------------------------------------------------ 证据
@@ -191,7 +191,7 @@ def render() -> None:
     figure.update_layout(barmode="group", title="逐月平均日较差：预报被系统性压扁")
     figure.update_xaxes(dtick=1, title="月份")
     figure.update_yaxes(title="日较差 (℃)")
-    st.plotly_chart(base_layout(figure, 340), use_container_width=True)
+    st.plotly_chart(base_layout(figure, 340), width="stretch")
     caption(
         "夏季模式能还原日变化（比值≈1.0），冬季几乎腰斩（比值 0.66）。"
         "这正是冬季系统性偏暖、夏季系统性偏冷的来源。"
