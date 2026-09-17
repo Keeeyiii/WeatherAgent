@@ -16,7 +16,7 @@ import streamlit as st
 from agent.weather_agent import WeatherAgent
 from tools.data_checker import check_data
 from tools.forecast_evaluator import evaluate_forecast
-from tools.ml_correction import machine_learning_correction
+from tools.ml_correction import baseline_comparison, machine_learning_correction
 
 # Streamlit Cloud 部署兼容：若在 Secrets 中配置了 Key，则写入环境变量供 Agent 读取。
 # 注意：本地未配置 secrets.toml 时，访问 st.secrets 会抛异常，需捕获后忽略
@@ -62,8 +62,9 @@ st.markdown(
     3. MAE、RMSE、Bias 计算
     4. Random Forest 误差订正
     5. 订正前后效果对比
-    6. 特征重要性分析
-    7. DeepSeek AI 气象分析 Agent
+    6. 基线对比实验（常数去偏 / 按小时去偏）
+    7. 特征重要性分析
+    8. DeepSeek AI 气象分析 Agent
     """
 )
 
@@ -89,6 +90,16 @@ with st.expander("方法说明"):
         训练窗口逐折扩大、测试段依次后移且互不重叠（共 3 折，每折测试约 20% 数据）；
         每一折的训练数据全部位于测试数据之前，无数据泄漏；
         最终汇总各折指标为「均值 ± 标准差」，反映订正效果的稳定性。
+
+        **5. 基线对比实验**
+        在随机森林之外，使用**完全相同的滚动窗口划分**对比两种简单基线：
+        - 基线A（常数去偏）：`corrected = forecast - 训练集平均偏差`
+        - 基线B（按小时去偏）：按 24 个小时分别用训练集各小时的平均偏差订正
+        用于判断随机森林的收益中，有多少来自系统性偏差和日变化偏差的消除。
+
+        **6. 实验局限性**
+        当前使用的是**模拟生成的示例数据**，日变化信号较强，因此 `hour` 特征重要性偏高；
+        该结果不代表在真实观测数据上的泛化能力，后续需接入真实气象站数据验证。
         """
     )
 
@@ -360,10 +371,119 @@ if st.session_state.get("ml_done", False):
         )
         st.plotly_chart(fig_imp, width="stretch")
 
+        # ---------------- ⑥ 基线对比实验 ----------------
+        st.markdown("---")
+        st.header("⑥ 基线对比实验")
+        st.markdown(
+            """
+            在随机森林之外，引入两种**简单基线方法**，使用与随机森林
+            **完全相同的滚动窗口划分和有效样本**，在同一测试集上对比：
+
+            - **基线A（常数去偏）**：用训练集整体平均偏差做固定订正
+            - **基线B（按小时去偏）**：按 24 个小时分别用训练集各小时的平均偏差订正
+
+            若随机森林相对基线B 改善有限，说明订正收益主要来自
+            系统性偏差和日变化偏差的消除，而非复杂的非线性关系。
+            """
+        )
+
+        with st.spinner("正在进行基线对比实验（与随机森林相同的划分）……"):
+            baseline_result = baseline_comparison(df)
+
+        # 四种方法在同一测试集上的对比表（各折均值）
+        methods_summary = [
+            ("原始预报", baseline_result["raw_mean"]),
+            ("基线A（常数去偏）", baseline_result["baseline_a_mean"]),
+            ("基线B（按小时去偏）", baseline_result["baseline_b_mean"]),
+            ("Random Forest 订正", ml_result["corrected_mean"]),
+        ]
+        compare_df = pd.DataFrame(
+            [
+                {
+                    "方法": name,
+                    "MAE (°C)": round(m["MAE"], 3),
+                    "RMSE (°C)": round(m["RMSE"], 3),
+                    "Bias (°C)": round(m["Bias"], 3),
+                }
+                for name, m in methods_summary
+            ]
+        ).set_index("方法")
+        st.dataframe(compare_df)
+        st.caption(
+            "各数值为滚动窗口交叉验证各折测试段的均值；"
+            "四种方法使用完全相同的训练/测试划分，可直接对比。"
+        )
+
+        # 分组柱状图：四种方法的 MAE 与 RMSE 对比
+        method_names = [name for name, _ in methods_summary]
+        fig_base = go.Figure()
+        fig_base.add_trace(
+            go.Bar(
+                x=method_names,
+                y=[m["MAE"] for _, m in methods_summary],
+                name="MAE",
+            )
+        )
+        fig_base.add_trace(
+            go.Bar(
+                x=method_names,
+                y=[m["RMSE"] for _, m in methods_summary],
+                name="RMSE",
+            )
+        )
+        fig_base.update_layout(
+            title="四种方法误差对比（各折均值）",
+            xaxis_title="方法",
+            yaxis_title="误差 (°C)",
+            barmode="group",
+            legend_title="指标",
+            height=400,
+        )
+        st.plotly_chart(fig_base, width="stretch")
+
+        # 结果讨论（依据真实计算结果自动生成）
+        rf_mae = ml_result["corrected_mean"]["MAE"]
+        base_a_mae = baseline_result["baseline_a_mean"]["MAE"]
+        base_b_mae = baseline_result["baseline_b_mean"]["MAE"]
+        improve_vs_b = (base_b_mae - rf_mae) / base_b_mae * 100
+
+        # 相对基线B 的 MAE 改善幅度小于 5% 视为「改善有限」
+        if improve_vs_b < 5.0:
+            if improve_vs_b <= 0:
+                rf_vs_b_text = (
+                    f"Random Forest 并未超过基线B"
+                    f"（MAE 反而高出 {-improve_vs_b:.1f}%）"
+                )
+            else:
+                rf_vs_b_text = (
+                    f"相对基线B 仅进一步降低 {improve_vs_b:.1f}%，改善有限"
+                )
+            st.info(
+                f"**结果讨论**：Random Forest 的各折平均 MAE 为 {rf_mae:.3f} °C，"
+                f"基线B（按小时去偏）为 {base_b_mae:.3f} °C，{rf_vs_b_text}。\n\n"
+                f"结合上表：基线A（常数去偏）已将 Bias 从 "
+                f"{baseline_result['raw_mean']['Bias']:+.3f} °C 大幅降至 "
+                f"{baseline_result['baseline_a_mean']['Bias']:+.3f} °C；"
+                f"基线B 在此基础上把 MAE 从 {base_a_mae:.3f} °C "
+                f"进一步降到 {base_b_mae:.3f} °C。\n\n"
+                "这说明当前示例数据上的订正收益主要来自**系统性偏差**和"
+                "**日变化偏差**的消除，而非随机森林捕捉到的复杂非线性关系——"
+                "对以这两类偏差为主的数据，简单的去偏方法已能取得大部分收益，"
+                "效果甚至与随机森林相当。"
+            )
+        else:
+            st.info(
+                f"**结果讨论**：Random Forest 的各折平均 MAE 为 {rf_mae:.3f} °C，"
+                f"基线B（按小时去偏）为 {base_b_mae:.3f} °C，"
+                f"相对基线B 进一步降低 {improve_vs_b:.1f}%。\n\n"
+                "这说明随机森林在系统性偏差和日变化偏差之外，"
+                "还捕捉到了更复杂的非线性关系，带来了额外收益。"
+            )
+
     st.markdown("---")
 
-    # ---------------- ⑥ 可视化分析 ----------------
-    st.header("⑥ 可视化分析")
+    # ---------------- ⑦ 可视化分析 ----------------
+    st.header("⑦ 可视化分析")
 
     ml_result = st.session_state.get("ml_result")
     if ml_result is None:
@@ -474,9 +594,9 @@ if st.session_state.get("ml_done", False):
             "不能直接代表模型在其他时间、地点或天气条件下的实际预报能力。"
         )
 
-# ---------------- ⑦ AI 气象预报分析 Agent ----------------
+# ---------------- ⑧ AI 气象预报分析 Agent ----------------
 st.markdown("---")
-st.header("⑦ AI 气象预报分析 Agent")
+st.header("⑧ AI 气象预报分析 Agent")
 
 st.markdown(
     """
