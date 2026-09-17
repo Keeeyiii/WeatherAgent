@@ -1,11 +1,6 @@
-# WeatherAgent 项目依赖
-# 采用「最低版本约束」，避免因锁定过新版本而导致安装失败
-
-streamlit>=1.36
-openai>=1.40
 pandas>=2.0
-numpy>=1.26
-scikit-learn>=1.4
-matplotlib>=3.8
-plotly>=5.20
-python-dotenv>=1.0
+numpy>=1.24
+scikit-learn>=1.3
+plotly>=5.18
+streamlit>=1.31
+requests>=2.31
