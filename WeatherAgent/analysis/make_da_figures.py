@@ -63,8 +63,7 @@ fig.savefig(os.path.join(FIG, "fig9_da_comparison.png"))
 plt.close(fig)
 print("wrote fig9")
 
-evaluation = dataset[dataset["time"] >= "2025-01-01"]
-table2 = sensitivity(evaluation, sigma_o_values=(0.5, 1.0, 1.5))
+table2 = sensitivity(dataset, sigma_o_values=(0.5, 1.0, 1.5), split_date="2025-01-01")
 fig, ax = plt.subplots(figsize=(6.8, 3.6))
 for sigma_o, color in ((0.5, C_NAVY), (1.0, C_BLUE), (1.5, C_ORANGE)):
     subset = table2[table2["sigma_o"] == sigma_o]

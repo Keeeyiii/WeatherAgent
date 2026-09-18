@@ -56,9 +56,8 @@ print(result["comparison"].round(3).to_string(index=False))
 print("\n各站：")
 print(result["per_station"].round(3).to_string(index=False))
 
-print("\n=== 相关长度敏感性（评估期同上，全样本）===")
-evaluation = dataset[dataset["time"] >= "2025-01-01"]
-table = sensitivity(evaluation, sigma_o_values=(0.5, 1.0, 1.5))
+print("\n=== 相关长度敏感性（评估期同上，方差取标定期）===")
+table = sensitivity(dataset, sigma_o_values=(0.5, 1.0, 1.5), split_date="2025-01-01")
 print(table.pivot(index="length_scale_km", columns="sigma_o", values="oi_MAE").round(3).to_string())
 print("\n对应 RMSE：")
 print(table.pivot(index="length_scale_km", columns="sigma_o", values="oi_RMSE").round(3).to_string())
