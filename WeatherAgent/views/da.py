@@ -243,8 +243,11 @@ def render() -> None:
     )
     moment = grid[grid["time"] == choice]
     observed = stations[stations["time"] == choice].dropna(subset=["t_obs", "t_bg"])
-    if observed.empty:
-        st.warning("该时刻没有同时具备观测与背景场的站点，请换一个时刻。")
+    if len(observed) < 3:
+        st.warning(
+            f"该时刻只有 {len(observed)} 个站有可用观测，不足以做空间分析。"
+            "最优插值至少需要 3 个站，否则会退化成直接照搬单站观测。请换一个时刻。"
+        )
         return
 
     analysis = grid_analysis(
@@ -345,6 +348,11 @@ def render() -> None:
     figure.update_xaxes(title="相关长度 L (km)")
     figure.update_yaxes(title="留一站检验 RMSE (℃)")
     st.plotly_chart(base_layout(figure, 400), width="stretch")
+
+    st.caption(
+        "说明：上方主表取 L = 300 km 作为代表值；参数扫描显示 L 在 300—800 km 之间时"
+        "结果差异很小，最优值见曲线最低点。两者并不矛盾，只是取值点不同。"
+    )
 
     best = sweep_table.loc[sweep_table["RMSE"].idxmin()]
     caption(
