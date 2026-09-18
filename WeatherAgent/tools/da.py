@@ -366,20 +366,33 @@ def sensitivity(
     dataset: pd.DataFrame,
     *,
     length_scales: tuple[float, ...] = (50, 100, 150, 200, 300, 400, 600, 800, 1200),
-    sigma_o_values: tuple[float, ...] = (0.5, 1.0, 2.0),
-    total_variance: float | None = None,
-    sample_every: int = 6,
+    sigma_o_values: tuple[float, ...] = (0.5, 1.0, 1.5),
+    split_date: str | None = None,
+    sample_every: int = 1,
 ) -> pd.DataFrame:
-    """相关长度与观测误差对分析效果的影响——OI 的核心权衡。"""
-    if total_variance is None:
+    """相关长度与观测误差对分析效果的影响——OI 的核心权衡。
+
+    split_date 给出时，新息方差**只从标定期**（split_date 之前）估计，
+    评估只在 split_date 之后进行，与 evaluate_methods 的口径完全一致。
+    """
+    if split_date is not None:
+        split = pd.Timestamp(split_date)
+        calibration = dataset[dataset["time"] < split]
+        evaluation = dataset[dataset["time"] >= split]
+        total_variance = float(
+            np.nanvar((calibration["t_bg"] - calibration["t_obs"]).to_numpy())
+        )
+    else:
+        evaluation = dataset
         total_variance = float(
             np.nanvar((dataset["t_bg"] - dataset["t_obs"]).to_numpy())
         )
+
     rows = []
     for sigma_o in sigma_o_values:
         for length_scale in length_scales:
             result = leave_one_out(
-                dataset,
+                evaluation,
                 length_scale_km=length_scale,
                 sigma_o=sigma_o,
                 total_variance=total_variance,
@@ -557,6 +570,10 @@ def grid_analysis(
 
     `observations` 需要包含 station / lat / lon / t_obs 四列（同一时刻）。
     """
+    if len(observations) < 3:
+        raise ValueError(
+            "最优插值至少需要 3 个站点的观测，否则分析场会退化为照搬单站观测。"
+        )
     sigma_b = float(np.sqrt(max(total_variance - sigma_o**2, 0.05)))
 
     station_lat = observations["lat"].to_numpy()
