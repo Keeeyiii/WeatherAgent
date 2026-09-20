@@ -135,6 +135,12 @@ def caption(text: str) -> None:
     )
 
 
+def go_to(page_key: str) -> None:
+    """切换到 app.py 注册的页面，并立即重跑以显示目标页。"""
+    st.session_state["active_page"] = page_key
+    st.rerun()
+
+
 # --------------------------------------------------------------------------- #
 # cached data access
 # --------------------------------------------------------------------------- #
@@ -218,3 +224,4 @@ def headline_numbers() -> dict:
         "start": nj["time"].min(),
         "end": nj["time"].max(),
     }
+
