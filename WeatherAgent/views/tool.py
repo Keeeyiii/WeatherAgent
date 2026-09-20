@@ -135,6 +135,9 @@ def _damping_chart(clean: pd.DataFrame) -> go.Figure:
 
 
 def render() -> None:
+    st.caption("从一个气象问题出发，逐步完成数据检查、误差诊断、结构分析和订正实验。")
+    if st.session_state.get("user_question"):
+        st.caption(f"当前研究问题：{st.session_state['user_question']}")
     hero(
         "误差分析：换一份数据，跑同一套分析",
         "这一页和后面的页面用的是**同一条分析流水线**。"
@@ -147,7 +150,6 @@ def render() -> None:
     source = st.radio(
         "数据来源",
         ["用内置示例数据（南京禄口 ZSNJ + GFS，23,543 小时）", "上传我自己的数据"],
-        index=1 if st.session_state.get("user_csv") is not None else 0,
         horizontal=True,
         label_visibility="collapsed",
     )
@@ -158,7 +160,6 @@ def render() -> None:
             uploaded = st.file_uploader(
                 "上传 CSV",
                 type=["csv"],
-                key="user_csv",
                 help="必须包含 time、forecast_temperature、observed_temperature；"
                 "humidity、pressure、wind_speed 可选。",
             )
