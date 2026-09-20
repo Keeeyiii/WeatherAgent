@@ -4,12 +4,14 @@
 用南京禄口站 2.4 年真实逐小时观测检验 GFS 2 米气温预报，
 诊断误差的结构，并检验误差订正的收益究竟来自哪里。
 
+信息架构（2026-09 重构）：
+    🏠 研究问题 → 🔬 分析工作流 → 🧠 科学发现 → 🧪 验证与实验 → 🧭 局限与下一步
+每个分区的第一页是该分区的导引页，原有功能页全部保留、只做归类。
+
     运行：  streamlit run app.py
 """
 
 from __future__ import annotations
-
-import os
 
 import streamlit as st
 
@@ -19,11 +21,14 @@ from views import (
     correction,
     da,
     data_method,
+    experiments,
     finding,
     home,
     limits,
+    science,
     tool,
     verification,
+    workflow,
 )
 from views.common import inject_css
 
@@ -35,56 +40,44 @@ st.set_page_config(
 )
 inject_css()
 
+# 页面按信息架构分组；url_path 用于深链接（?page=workflow）与页面间跳转。
 PAGES = {
-    "🏠 首页 · 误差会变吗": home.render,
-    "🔬 误差分析（可换数据）": tool.render,
-    "📐 数据与方法": data_method.render,
-    "📊 误差检验": verification.render,
-    "🔍 核心发现：振幅阻尼": finding.render,
-    "🧪 订正实验": correction.render,
-    "🛰 资料同化实验（OI）": da.render,
-    "🌀 真实案例": cases.render,
-    "🧭 局限与展望": limits.render,
-    "🤖 研究助手": agent.render,
+    # 注意：分组键必须是字符串；None 会令 st.navigation 的 protobuf 序列化报错。
+    "🏠 研究问题": [
+        st.Page(home.render, title="主页 · 研究问题", url_path="home", default=True),
+    ],
+    "🔬 分析工作流": [
+        st.Page(workflow.render, title="分析工作流", url_path="workflow"),
+        st.Page(tool.render, title="误差分析流水线（可换数据）", url_path="workflow-run"),
+    ],
+    "🧠 科学发现": [
+        st.Page(science.render, title="发现总览", url_path="science"),
+        st.Page(finding.render, title="核心发现：振幅阻尼", url_path="finding"),
+        st.Page(data_method.render, title="数据与方法", url_path="data-method"),
+    ],
+    "🧪 验证与实验": [
+        st.Page(experiments.render, title="实验总览", url_path="experiments"),
+        st.Page(verification.render, title="误差检验", url_path="verification"),
+        st.Page(correction.render, title="订正实验", url_path="correction"),
+        st.Page(da.render, title="资料同化实验（OI）", url_path="da"),
+        st.Page(cases.render, title="真实案例", url_path="cases"),
+    ],
+    "🧭 局限与下一步": [
+        st.Page(limits.render, title="局限与展望", url_path="limits"),
+    ],
+    "🤖 辅助工具": [
+        st.Page(agent.render, title="研究助手", url_path="agent"),
+    ],
 }
 
 
 def main() -> None:
-    # 页面选择优先级：环境变量（自动化检查用）→ URL 参数 ?page=… （可分享深链接）→ 默认首页
-    forced = os.environ.get("WEATHERAGENT_PAGE")
-    if forced in PAGES:
-        index = list(PAGES).index(forced)
-    else:
-        requested = None
-        try:
-            requested = st.query_params.get("page")
-        except Exception:  # noqa: BLE001  （旧版 Streamlit 没有 query_params）
-            requested = None
-        index = None
-        if requested:
-            # 允许用简称（如 "数据与方法"），不必带上页面名里的 emoji
-            for position, name in enumerate(PAGES):
-                if requested == name or requested in name:
-                    index = position
-                    break
-        if index is None:
-            try:
-                index = int(os.environ.get("WEATHERAGENT_PAGE_INDEX", "0"))
-            except ValueError:
-                index = 0
-            index = max(0, min(index, len(PAGES) - 1))
+    # 侧边栏：品牌区 → 分组导航 → 一句话摘要
     with st.sidebar:
         st.markdown("### 🌦 WeatherAgent")
         st.caption("研究误差怎么变：用真实观测诊断 GFS 气温预报的误差结构")
-        if "goto" in st.session_state:
-            st.session_state["nav_choice"] = st.session_state.pop("goto")
-        choice = st.radio(
-            "导航",
-            list(PAGES),
-            key="nav_choice",
-            index=index,
-            label_visibility="collapsed",
-        )
+    nav = st.navigation(PAGES, expanded=True)
+    with st.sidebar:
         st.divider()
         st.markdown(
             "**一句话摘要**\n\n"
@@ -97,7 +90,7 @@ def main() -> None:
             "数据：南京禄口 ZSNJ 真实逐小时观测 + GFS 历史预报归档\n\n"
             "样本：23,543 小时（2024-01 至 2026-09）"
         )
-    PAGES[choice]()
+    nav.run()
 
 
 if __name__ == "__main__":
