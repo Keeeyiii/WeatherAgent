@@ -8,21 +8,20 @@ from __future__ import annotations
 
 import streamlit as st
 
-from views.common import hero
+from views.common import go_to, hero
 
 EXAMPLE_QUESTIONS = [
-    "为什么天气预报有时差好几度？",
-    "预报误差是随机的，还是有规律的？",
-    "为什么冬天的夜间最低气温总是报不准？",
-    "用机器学习能订正多少预报误差？",
-    "换一个站点，订正方法还好用吗？",
+    "为什么天气预报会出错？",
+    "这个模式有什么系统性偏差？",
+    "为什么极端天气预报容易出错？",
+    "能不能改善这个预报？",
+    "我有自己的气象数据",
 ]
 
 
 def _goto_workflow(question: str) -> None:
     st.session_state["user_question"] = question.strip()
-    st.query_params["page"] = "workflow"
-    st.rerun()
+    go_to("workflow")
 
 
 def render() -> None:
@@ -63,3 +62,4 @@ def render() -> None:
         "这个应用用南京禄口机场 23,543 小时的真实观测，诊断 GFS 气温预报的误差结构。\n\n"
         "如果你想直接看结论，请前往左侧 **🧠 科学发现** 分区。"
     )
+
